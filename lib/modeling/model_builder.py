@@ -280,13 +280,25 @@ class Generalized_RCNN(nn.Module):
 					
 					num_classes = cfg.MODEL.NUM_CLASSES
 					
-					onecls_pred_boxes = []
-					for j in range(1, num_classes):
-						inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
-						boxes_j = shift_boxes[inds, j * 4:(j + 1) * 4]
-						onecls_pred_boxes += boxes_j.tolist()
+					# onecls_pred_boxes = []
+					# for j in range(1, num_classes):
+					# 	inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
+					# 	boxes_j = shift_boxes[inds, j * 4:(j + 1) * 4]
+					# 	onecls_pred_boxes += boxes_j.tolist()
+					#
+					# stage2_rois = np.array(onecls_pred_boxes, dtype = np.float32)
 					
-					stage2_rois = np.array(onecls_pred_boxes, dtype = np.float32)
+					# Set cls 0's score to zero
+					cls_score_ignore_bg = np.zeros((cls_score.shape), dtype = np.float32)
+					for ind, item in enumerate(cls_score_ignore_bg):
+						cls_score_ignore_bg[ind, 1:num_classes] = cls_score[ind, 1:num_classes]
+					
+					# Select max element of each rows and map it into its scores
+					stage2_rois = np.array((shift_boxes.shape[0], 4), dtype = np.float32)
+					max_ind = np.argmax(cls_score_ignore_bg, axis = 1)
+					for ind, item in enumerate(max_ind):
+						stage2_rois[ind, :] = shift_boxes[ind, item: (item + 1) * 4]
+					
 					# redistribute stage2_rois using fpn_utils module provided functions
 					lvl_min = cfg.FPN.ROI_MIN_LEVEL
 					lvl_max = cfg.FPN.roi_max_level
@@ -315,7 +327,7 @@ class Generalized_RCNN(nn.Module):
 					# compute IOU between final_boxes and stage2_rois, one by one
 					iou = box_utils.bbox_overlaps(stage2_rois, stage2_output_boxes)
 					iou = iou.max(axis = 1)
-					
+				
 				
 				
 				

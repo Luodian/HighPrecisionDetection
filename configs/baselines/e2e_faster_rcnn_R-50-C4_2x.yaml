@@ -3,8 +3,8 @@ MODEL:
   CONV_BODY: ResNet.ResNet50_conv4_body
   FASTER_RCNN: True
 RESNETS:
-  IMAGENET_PRETRAINED_WEIGHTS: 'data/pretrained_model/R-50.pkl'
-NUM_GPUS: 8
+  IMAGENET_PRETRAINED_WEIGHTS: '/nfs/project/libo_i/IOU.pytorch/data/pretrained_model/R-50.pkl'
+NUM_GPUS: 4
 SOLVER:
   WEIGHT_DECAY: 0.0001
   LR_POLICY: steps_with_decay

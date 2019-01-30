@@ -1,10 +1,11 @@
 MODEL:
   TYPE: generalized_rcnn
   CONV_BODY: FPN.fpn_ResNet101_conv5_body
+  NUM_CLASSES: 81
   FASTER_RCNN: True
   MASK_ON: True
 RESNETS:
-  IMAGENET_PRETRAINED_WEIGHTS: 'data/pretrained_model/resnet101_caffe.pth'
+  IMAGENET_PRETRAINED_WEIGHTS: '/nfs/project/libo_i/IOU.pytorch/data/pretrained_model/resnet101_caffe.pth'
 NUM_GPUS: 4
 SOLVER:
   WEIGHT_DECAY: 0.0001

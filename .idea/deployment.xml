@@ -11,6 +11,7 @@
             <excludedPath path="/nfs/project/libo_i/IOU.pytorch/data" />
             <excludedPath path="/nfs/project/libo_i/IOU.pytorch/im_out" />
             <excludedPath path="/nfs/project/libo_i/IOU.pytorch/Outputs" />
+            <excludedPath path="/nfs/project/libo_i/IOU.pytorch/luban_shell/train/Outputs" />
           </excludedPaths>
         </serverdata>
       </paths>
