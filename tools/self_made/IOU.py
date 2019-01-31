@@ -27,9 +27,9 @@ def precision_recall(gt, pred):
 		                                                          len(y_right) * 1. / len(y_pred)))
 
 
-method = "score_guide"
+method = "iou_2_stage_experiments"
 
-with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_info_{}.json".format(method)) as f:
+with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
 
 total_shift_iou = []

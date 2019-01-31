@@ -262,7 +262,7 @@ def test_net(
 	
 	dict_all = {}
 	
-	if cfg.TEST.IOU_OUT:
+	if cfg.TEST.IOU_OUT or cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
 		with open("/nfs/project/libo_i/IOU.pytorch/data/cache/coco_2017_val_gt_roidb.pkl", 'rb') as fp:
 			cached_roidb = pickle.load(fp)
 		
@@ -288,10 +288,18 @@ def test_net(
 		
 		cls_boxes_i, cls_segms_i, cls_keyps_i, dict_all[im_name] = im_detect_all(model, im, box_proposals, timers,
 		                                                                         im_name_tag = im_name)
+		gt_i = cached_roidb[i]['boxes']
+		if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
+			shift_gt_iou = predbox_roi_iou(np.array(dict_all[im_name]['pred_boxes'], dtype = np.float32),
+			                               np.array(gt_i, dtype = "float32"))
+			
+			dict_all[im_name]['final'] = shift_gt_iou.tolist()
+			
+			keep = np.array(dict_all[im_name]['keep'])
+			dict_all[im_name]['shift'] = np.array(dict_all[im_name]['shift'], dtype = np.float32)[keep].tolist()
+			dict_all[im_name]['final'] = np.array(dict_all[im_name]['final'], dtype = np.float32)[keep].tolist()
 		
 		if cfg.TEST.IOU_OUT:
-			gt_i = cached_roidb[i]['boxes']
-			
 			roi_to_final = predbox_roi_iou(dict_all[im_name]['rois'], np.array(gt_i, dtype = "float32"))
 			dict_all[im_name]['final'] = roi_to_final.tolist()
 			
@@ -335,12 +343,12 @@ def test_net(
 			
 			dict_all[im_name].pop('rois')
 			dict_all[im_name].pop('pred_boxes')
-			dict_all[im_name].pop('keep')
-			
-			if i % 100 == 0 and i != 0:
-				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_info_iou_guided.json", 'w') as f:
-					f.write(json.dumps(dict_all))
-					print("In {} round, saved dict_all ".format(i))
+		
+		dict_all[im_name].pop('keep')
+		if i % 100 == 0 and i != 0:
+			with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_2_stage_experiments.json", 'w') as f:
+				f.write(json.dumps(dict_all))
+				print("In {} round, saved dict_all ".format(i))
 		
 		extend_results(i, all_boxes, cls_boxes_i)
 		if cls_segms_i is not None:

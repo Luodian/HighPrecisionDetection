@@ -294,66 +294,89 @@ class Generalized_RCNN(nn.Module):
 						cls_score_ignore_bg[ind, 1:num_classes] = cls_score[ind, 1:num_classes]
 					
 					# Select max element of each rows and map it into its scores
-					stage2_rois = np.array((shift_boxes.shape[0], 4), dtype = np.float32)
+					stage2_rois = np.zeros((shift_boxes.shape[0], 4), dtype = np.float32)
 					max_ind = np.argmax(cls_score_ignore_bg, axis = 1)
 					for ind, item in enumerate(max_ind):
-						stage2_rois[ind, :] = shift_boxes[ind, item: (item + 1) * 4]
+						stage2_rois[ind] = shift_boxes[ind, item * 4: (item + 1) * 4]
 					
 					# redistribute stage2_rois using fpn_utils module provided functions
 					lvl_min = cfg.FPN.ROI_MIN_LEVEL
-					lvl_max = cfg.FPN.roi_max_level
+					lvl_max = cfg.FPN.ROI_MAX_LEVEL
 					lvls = fpn_utils.map_rois_to_fpn_levels(stage2_rois, lvl_min, lvl_max)
 					
 					# TAG: We might need to visualize "stage2_rois" to make sure.
-					
+					rois_idx_order = np.empty((0,))
 					for output_idx, lvl in enumerate(range(lvl_min, lvl_max + 1)):
 						idx_lvl = np.where(lvls == lvl)[0]
 						rois_lvl = stage2_rois[idx_lvl, :]
+						rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
 						rpn_ret['rois_fpn{}'.format(lvl)] = rois_lvl
 						print("Rois_FPN_{} has been replaced!".format(lvl))
 					
+					rois_idx_restore = np.argsort(rois_idx_order)
 					stage2_feat = self.Box_Head(blob_conv, rpn_ret)
 					stage2_cls_score, stage2_bbox_pred = self.Box_Outs(stage2_feat)
 					
 					# get stage2 pred_boxes here
-					onecls_pred_boxes = []
-					for j in range(1, num_classes):
-						inds = np.where(stage2_cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
-						boxes_j = stage2_bbox_pred[inds, j * 4:(j + 1) * 4]
-						onecls_pred_boxes += boxes_j.tolist()
+					# Set cls 0's score to zero
+					cls_score_ignore_bg = np.zeros((stage2_cls_score.shape), dtype = np.float32)
+					for ind, item in enumerate(stage2_cls_score):
+						cls_score_ignore_bg[ind, 1:num_classes] = stage2_cls_score[ind, 1:num_classes]
 					
-					stage2_output_boxes = np.array(onecls_pred_boxes, dtype = np.float32)
+					# Transform shift value to original one to get final pred boxes coordinates
+					stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
+					stage2_box_deltas = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
+					stage2_cls_out = box_utils.bbox_transform(rois, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+					stage2_cls_out = box_utils.clip_tiled_boxes(stage2_cls_out,
+					                                            im_info.data.cpu().numpy().squeeze()[0:2])
 					
-					# compute IOU between final_boxes and stage2_rois, one by one
-					iou = box_utils.bbox_overlaps(stage2_rois, stage2_output_boxes)
-					iou = iou.max(axis = 1)
-				
-				
-				
-				
-				else:
-					rois = rpn_ret['rois']
-					# unscale back to raw image space
-					boxes = rois[:, 1:5]
-					box_deltas = bbox_pred.reshape([-1, bbox_pred.shape[-1]])
-					stage2_rois = box_utils.bbox_transform(boxes, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+					# Select max element of each rows and map it into its scores
+					stage2_final_boxes = np.zeros((stage2_cls_out.shape[0], 4), dtype = np.float32)
 					
-					# stage2_roialign
-					box_feat = self.Box_Head(blob_conv, rpn_ret)
-					cls_score, bbox_pred = self.Box_Outs(box_feat)
+					max_ind = np.argmax(cls_score_ignore_bg, axis = 1)
+					for ind, item in enumerate(max_ind):
+						stage2_final_boxes[ind] = stage2_cls_out[ind, item * 4: (item + 1) * 4]
+					
+					# Restore stage2_pred_boxes to match the index with stage2_rois, Compute IOU between final_boxes
+					# and stage2_rois, one by one
+					restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
+					stage1_pred_iou = []
+					for ind, item in enumerate(stage2_rois):
+						stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
+						stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape((1, 4))
+						iou = box_utils.bbox_overlaps(stage1, stage2)
+						stage1_pred_iou.append(iou.squeeze().item())
+					
+					# stage1_pred is another name of stage2_rois
+					assert len(stage1_pred_iou) == len(stage2_rois)
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_boxes.json", 'w') as f:
+						json.dump(stage2_rois.tolist(), f)
+					
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
+						json.dump(stage1_pred_iou, f)
 			
-			# get stage2 pred_boxes here
-			
-			return_dict['cls_score'] = cls_score
-			return_dict['bbox_pred'] = bbox_pred
+			else:
+				rois = rpn_ret['rois']
+				# unscale back to raw image space
+				boxes = rois[:, 1:5]
+				box_deltas = bbox_pred.reshape([-1, bbox_pred.shape[-1]])
+				stage2_rois = box_utils.bbox_transform(boxes, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+				
+				# stage2_roialign
+				box_feat = self.Box_Head(blob_conv, rpn_ret)
+				cls_score, bbox_pred = self.Box_Outs(box_feat)
 		
+		# get stage2 pred_boxes here
+		
+		return_dict['cls_score'] = cls_score
+		return_dict['bbox_pred'] = bbox_pred
 		return return_dict
 	
 	def roi_feature_transform(self, blobs_in, rpn_ret, blob_rois = 'rois', method = 'RoIAlign',
 	                          resolution = 7, spatial_scale = 1. / 16., sampling_ratio = 0):
 		"""Add the specified RoI pooling method. The sampling_ratio argument
 		is supported for some, but not all, RoI transform methods.
-
+	
 		RoIFeatureTransform abstracts away:
 		  - Use of FPN or not
 		  - Specifics of the transform method

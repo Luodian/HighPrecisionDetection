@@ -94,9 +94,9 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 	timers['misc_bbox'].toc()
 	
 	dict_i = {}
+	path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
 	
 	if cfg.TEST.IOU_OUT:
-		path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
 		
 		with open(os.path.join(path, "shifted_boxes.json"), "r") as f:
 			pred_boxes = np.array(json.load(f), dtype = "float32")
@@ -117,6 +117,23 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		dict_i['shift'] = roi_to_shift.tolist()
 		dict_i['rpn_score'] = rpn_score.tolist()
 		dict_i['pred_boxes'] = pred_boxes
+		dict_i['keep'] = keep
+	
+	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
+		
+		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
+			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
+		
+		with open(os.path.join(path, "stage1_pred_boxes.json"), "r") as f:
+			stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
+		
+		# 顾老师的NMS流程，不知道加不加上？
+		bbox_with_score = np.hstack((stage1_pred_boxes, stage1_pred_iou[:, np.newaxis])).astype(np.float32,
+		                                                                                        copy = False)
+		keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
+		
+		dict_i['shift'] = stage1_pred_iou.tolist()
+		dict_i['pred_boxes'] = stage1_pred_boxes.tolist()
 		dict_i['keep'] = keep
 	
 	if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
