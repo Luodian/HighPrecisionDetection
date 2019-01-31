@@ -23,11 +23,11 @@ def precision_recall(gt, pred):
 		ind = np.where(pred > 0.5)[0]
 		y_pred = gt[ind]
 		y_right = np.where(y_pred > score)[0]
-		print("score {}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
-		                                                          len(y_right) * 1. / len(y_pred)))
+		print("Thresh {:.2f}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
+		                                                               len(y_right) * 1. / len(y_pred)))
 
 
-method = "iou_2_stage_experiments"
+method = "score_nms_2stage"
 
 with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
@@ -94,6 +94,7 @@ for item in score_xline:
 score_xline += 0.05
 
 precision_recall(np.array(gt_iou_above_ths), shift_iou_above_ths)
+precision_recall(np.array(gt_iou_above_ths), )
 
 plt.subplot(211)
 plt.scatter(sorted_total_iou, sorted_total_score, c = "b", alpha = 0.5, s = 0.05)
@@ -104,16 +105,16 @@ plt.autoscale(tight = True)
 plt.grid()
 
 plt.subplot(212)
-plt.scatter(sorted_gt_iou, shift_iou_above_ths, c = "b", alpha = 0.5, s = 0.05)
+plt.scatter(sorted_gt_iou, shift_iou_above_ths, c = "b", alpha = 0.5, s = 0.1)
 plt.plot(x_line, shift_mean_value, c = 'r', marker = 'o')
 plt.ylabel("iou_with_shift")
 plt.xlabel("iou_with_gt")
-plt.suptitle("{}pics".format(len(dict_all)))
+plt.suptitle('score_nms_2stage')
 plt.autoscale(tight = True)
 plt.grid()
 plt.show()
 
-plt.savefig("/nfs/project/libo_i/IOU.pytorch/iou_iou_{}.png".format(method), dpi = 200)
+plt.savefig("/nfs/project/libo_i/IOU.pytorch/{}.png".format(method), dpi = 200)
 
 from scipy import stats
 

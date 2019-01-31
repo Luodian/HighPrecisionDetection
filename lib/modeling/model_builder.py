@@ -352,6 +352,9 @@ class Generalized_RCNN(nn.Module):
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_boxes.json", 'w') as f:
 						json.dump(stage2_rois.tolist(), f)
 					
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage2_pred_boxes.json", 'w') as f:
+						json.dump(stage2_final_boxes.tolist(), f)
+					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
 						json.dump(stage1_pred_iou, f)
 			

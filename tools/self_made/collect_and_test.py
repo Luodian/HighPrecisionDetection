@@ -50,4 +50,3 @@ for item in test_list:
 	
 	if not "gn" in yaml:
 		subproc(infer_cmd)
-	
