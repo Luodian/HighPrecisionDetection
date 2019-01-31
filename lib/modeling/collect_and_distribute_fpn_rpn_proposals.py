@@ -86,7 +86,7 @@ def collect(inputs, is_training):
 	scores = np.concatenate(score_inputs).squeeze()
 	inds = np.argsort(-scores)[:post_nms_topN]
 	rois = rois[inds, :]
-	if cfg.TEST.IOU_OUT:
+	if cfg.TEST.IOU_OUT or cfg.FAST_RCNN:
 		score_2_json = []
 		ret_scores = scores[inds]
 		for item in ret_scores:
