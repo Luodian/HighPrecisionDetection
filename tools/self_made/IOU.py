@@ -17,17 +17,47 @@ def predbox_roi_iou(raw_roi, pred_box):
 	return roi_iou
 
 
-def precision_recall(gt, pred):
-	for score in range(5, 10):
+def precision_recall(gt, pred, thrs, flag):
+	print("PR of gt_iou and {}".format(flag))
+	for score in range(0, 10):
 		score = score * 0.1
-		ind = np.where(pred > 0.8)[0]
+		ind = np.where(pred > thrs)[0]
 		y_pred = gt[ind]
 		y_right = np.where(y_pred > score)[0]
-		print("Thresh {:.2f}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
+		print("Thresh {:.1f}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
 		                                                               len(y_right) * 1. / len(y_pred)))
+	print("\n")
 
 
-method = "FPN_iou_nms"
+def BIG(method):
+	with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
+		dict_all = json.load(f)
+	
+	total_shift_iou = []
+	total_final_iou = []
+	total_score = []
+	
+	for item in dict_all:
+		shift_i = dict_all[item]['shift']
+		total_shift_iou.extend(shift_i)
+		
+		final_i = dict_all[item]['final']
+		total_final_iou.extend(final_i)
+		
+		score_i = dict_all[item]['rpn_score']
+		
+		total_score.extend(score_i)
+	
+	precision_recall(np.array(total_final_iou), np.array(total_shift_iou), 0.5, "IOU")
+	
+	precision_recall(np.array(total_final_iou), np.array(total_score), 0.5, "SCORE")
+
+
+BIG("FPN_SCORE_NMS")
+BIG("FPN_IOU_NMS")
+exit(0)
+
+method = "FPN_SCORE_NMS"
 with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
 
@@ -46,6 +76,10 @@ for item in dict_all:
 	
 	total_score.extend(score_i)
 
+precision_recall(np.array(total_final_iou), total_shift_iou, 0.5, "IOU")
+
+precision_recall(np.array(total_final_iou), total_score, 0.5, "SCORE")
+
 gt_iou_above_ths = []
 shift_iou_above_ths = []
 score_above_ths = []
@@ -60,6 +94,7 @@ for ind, item in enumerate(total_final_iou):
 sorted_index = np.argsort(gt_iou_above_ths)
 sorted_gt_iou = np.array(gt_iou_above_ths, dtype = np.float32)[sorted_index]
 shift_iou_above_ths = np.array(shift_iou_above_ths, dtype = np.float32)[sorted_index]
+score_above_ths = np.array(score_above_ths, dtype = np.float32)[sorted_index]
 
 # gt_iou_ab_ths和shift_iou的数据进行逐0.1的算均值
 shift_mean_value = []
@@ -91,9 +126,6 @@ for item in score_xline:
 	score_mean_value.append(np.mean(sorted_total_score[indx_left:indx_right + 1]))
 
 score_xline += 0.05
-
-precision_recall(np.array(gt_iou_above_ths), shift_iou_above_ths)
-# precision_recall(np.array(gt_iou_above_ths), )
 
 plt.subplot(211)
 plt.scatter(sorted_total_iou, sorted_total_score, c = "b", alpha = 0.5, s = 0.05)

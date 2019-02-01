@@ -324,6 +324,13 @@ class Generalized_RCNN(nn.Module):
 					# Transform shift value to original one to get final pred boxes coordinates
 					stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
 					stage2_box_deltas = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
+					# Add some variance to box delta
+					import random
+					
+					for i in range(len(stage2_box_deltas)):
+						for j in range(len(stage2_box_deltas[i])):
+							stage2_box_deltas[i][j] *= random.uniform(0.9, 1.1)
+					
 					stage2_cls_out = box_utils.bbox_transform(stage2_rois, stage2_box_deltas,
 					                                          cfg.MODEL.BBOX_REG_WEIGHTS)
 					stage2_cls_out = box_utils.clip_tiled_boxes(stage2_cls_out,
@@ -395,6 +402,7 @@ class Generalized_RCNN(nn.Module):
 					
 					stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
 					stage2_bbox_pred = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
+					
 					stage2_cls_pred_boxes = box_utils.bbox_transform(stage2_rois, stage2_bbox_pred,
 					                                                 cfg.MODEL.BBOX_REG_WEIGHTS)
 					stage2_cls_pred_boxes = box_utils.clip_tiled_boxes(stage2_cls_pred_boxes,

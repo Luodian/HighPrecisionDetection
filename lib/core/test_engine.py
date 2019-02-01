@@ -297,6 +297,8 @@ def test_net(
 			keep = np.array(dict_all[im_name]['keep'])
 			dict_all[im_name]['shift'] = np.array(dict_all[im_name]['shift'], dtype = np.float32)[keep].tolist()
 			dict_all[im_name]['final'] = np.array(dict_all[im_name]['final'], dtype = np.float32)[keep].tolist()
+			dict_all[im_name]['rpn_score'] = np.array(dict_all[im_name]['rpn_score'], dtype = np.float32)[
+				keep].tolist()
 			dict_all[im_name]['after_nms_stage1_pred_boxes'] = \
 				np.array(dict_all[im_name]['stage1_pred_boxes'], dtype = np.float32)[keep].tolist()
 			dict_all[im_name]['after_nms_stage2_pred_boxes'] = \
@@ -406,9 +408,15 @@ def test_net(
 			
 			dict_all[im_name].pop('keep')
 			if i == 100:
-				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_score_nms.json", 'w') as f:
-					f.write(json.dumps(dict_all))
-					print("In {} round, saved dict_all ".format(i))
+				if cfg.FAST_RCNN.IOU_NMS:
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_IOU_NMS.json", 'w') as f:
+						f.write(json.dumps(dict_all))
+						print("In {} round, saved dict_all ".format(i))
+				elif cfg.FAST_RCNN.SCORE_NMS:
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_SCORE_NMS.json", 'w') as f:
+						f.write(json.dumps(dict_all))
+						print("In {} round, saved dict_all ".format(i))
+				exit(0)
 		
 		if cfg.TEST.IOU_OUT:
 			gt_i = cached_roidb[i]['boxes']
