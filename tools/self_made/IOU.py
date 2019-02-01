@@ -20,15 +20,13 @@ def predbox_roi_iou(raw_roi, pred_box):
 def precision_recall(gt, pred):
 	for score in range(5, 10):
 		score = score * 0.1
-		ind = np.where(pred > 0.5)[0]
+		ind = np.where(pred > 0.8)[0]
 		y_pred = gt[ind]
 		y_right = np.where(y_pred > score)[0]
 		print("Thresh {:.2f}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
 		                                                               len(y_right) * 1. / len(y_pred)))
-
-
-method = "iou_nms"
-
+		
+method = "rpn_only_score_nms"
 with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
 

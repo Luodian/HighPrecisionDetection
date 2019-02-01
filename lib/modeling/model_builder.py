@@ -277,9 +277,7 @@ class Generalized_RCNN(nn.Module):
 					box_deltas = bbox_pred.reshape([-1, bbox_pred.shape[-1]])
 					shift_boxes = box_utils.bbox_transform(rois, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
 					shift_boxes = box_utils.clip_tiled_boxes(shift_boxes, im_info.data.cpu().numpy().squeeze()[0:2])
-					
 					num_classes = cfg.MODEL.NUM_CLASSES
-					
 					# onecls_pred_boxes = []
 					# for j in range(1, num_classes):
 					# 	inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
@@ -299,7 +297,7 @@ class Generalized_RCNN(nn.Module):
 					for ind, item in enumerate(max_ind):
 						stage2_rois[ind] = shift_boxes[ind, item * 4: (item + 1) * 4]
 					
-					# redistribute stage2_rois using fpn_utils module provided functions
+					# Redistribute stage2_rois using fpn_utils module provided functions
 					lvl_min = cfg.FPN.ROI_MIN_LEVEL
 					lvl_max = cfg.FPN.ROI_MAX_LEVEL
 					lvls = fpn_utils.map_rois_to_fpn_levels(stage2_rois, lvl_min, lvl_max)
@@ -326,7 +324,8 @@ class Generalized_RCNN(nn.Module):
 					# Transform shift value to original one to get final pred boxes coordinates
 					stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
 					stage2_box_deltas = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
-					stage2_cls_out = box_utils.bbox_transform(rois, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+					stage2_cls_out = box_utils.bbox_transform(stage2_rois, stage2_box_deltas,
+					                                          cfg.MODEL.BBOX_REG_WEIGHTS)
 					stage2_cls_out = box_utils.clip_tiled_boxes(stage2_cls_out,
 					                                            im_info.data.cpu().numpy().squeeze()[0:2])
 					
@@ -357,17 +356,63 @@ class Generalized_RCNN(nn.Module):
 					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
 						json.dump(stage1_pred_iou, f)
-			
+				
 				else:
-					rois = rpn_ret['rois']
+					im_scale = im_info.data.cpu().numpy().squeeze()[2]
+					rois = rpn_ret['rois'][:, 1:5] / im_scale
 					# unscale back to raw image space
-					boxes = rois[:, 1:5]
-					box_deltas = bbox_pred.reshape([-1, bbox_pred.shape[-1]])
-					stage2_rois = box_utils.bbox_transform(boxes, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+					box_deltas = bbox_pred.data.cpu().numpy().squeeze()
+					fast_stage1_score = cls_score.data.cpu().numpy().squeeze()
 					
-					# stage2_roialign
-					box_feat = self.Box_Head(blob_conv, rpn_ret)
-					cls_score, bbox_pred = self.Box_Outs(box_feat)
+					box_deltas = box_deltas.reshape([-1, bbox_pred.shape[-1]])
+					stage2_rois = box_utils.bbox_transform(rois, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+					stage2_rois = box_utils.clip_tiled_boxes(stage2_rois, im_info.data.cpu().numpy().squeeze()[0:2])
+					
+					num_classes = cfg.MODEL.NUM_CLASSES
+					
+					onecls_pred_boxes = []
+					onecls_cls_score = []
+					for j in range(1, num_classes):
+						inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
+						boxes_j = stage2_rois[inds, j * 4:(j + 1) * 4]
+						score_j = fast_stage1_score[inds, j]
+						onecls_pred_boxes += boxes_j.tolist()
+						onecls_cls_score += score_j.tolist()
+					
+					stage2_rois = np.array(onecls_pred_boxes, dtype = np.float32)
+					stage2_rois_score = np.array(onecls_cls_score, dtype = np.float32)
+					
+					assert len(stage2_rois) == len(stage2_rois_score)
+					
+					# Send stage2 rois to next stage fast head, do ROI ALIGN again
+					# to modify rpn_ret['rois] , rpn_ret['rpn_rois'] and rpn['rois_rpn_score']
+					
+					rpn_ret['rois'] = stage2_rois
+					rpn_ret['rpn_rois'] = stage2_rois
+					rpn_ret['rpn_roi_probs'] = stage2_rois_score
+					stage2_box_feat = self.Box_Head(blob_conv, rpn_ret)
+					stage2_cls_score, stage2_bbox_pred = self.Box_Outs(stage2_box_feat)
+					
+					stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
+					stage2_bbox_pred = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
+					stage2_cls_pred_boxes = box_utils.bbox_transform(stage2_rois, stage2_bbox_pred,
+					                                                 cfg.MODEL.BBOX_REG_WEIGHTS)
+					stage2_cls_pred_boxes = box_utils.clip_tiled_boxes(stage2_cls_pred_boxes,
+					                                                   im_info.data.cpu().numpy().squeeze()[0:2])
+					
+					onecls_pred_boxes = []
+					onecls_cls_score = []
+					for j in range(1, num_classes):
+						inds = np.where(stage2_cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
+						if len(inds) != 0:
+							print("KKKKK")
+						boxes_j = stage2_cls_pred_boxes[inds, j * 4:(j + 1) * 4]
+						score_j = stage2_cls_score[inds, j]
+						onecls_pred_boxes += boxes_j.tolist()
+						onecls_cls_score += score_j.tolist()
+					
+					stage2_bbox_pred = np.array(onecls_pred_boxes, dtype = np.float32)
+					stage2_bbox_pred_score = np.array(onecls_cls_score, dtype = np.float32)
 		
 		# get stage2 pred_boxes here
 		

@@ -110,7 +110,7 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		roi_to_shift = predbox_roi_iou(raw_roi, pred_boxes)
 		
 		# 顾老师的NMS流程，不知道加不加上？
-		bbox_with_score = np.hstack((raw_roi, roi_to_shift[:, np.newaxis])).astype(np.float32, copy = False)
+		bbox_with_score = np.hstack((raw_roi, rpn_score[:, np.newaxis])).astype(np.float32, copy = False)
 		keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
 		
 		dict_i['rois'] = raw_roi
@@ -811,15 +811,12 @@ def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch
 	cls_boxes = [[] for _ in range(num_classes)]
 	# Apply threshold on detection probabilities and apply NMS
 	# Skip j = 0, because it's the background class
-	onecls_pred_boxes = []
 	for j in range(1, num_classes):
 		inds = np.where(scores[:, j] > cfg.TEST.SCORE_THRESH)[0]
 		scores_j = scores[inds, j]
 		boxes_j = boxes[inds, j * 4:(j + 1) * 4]
 		dets_j = np.hstack((boxes_j, scores_j[:, np.newaxis])).astype(np.float32, copy = False)
 		# output pred_boxes
-		onecls_pred_boxes += boxes_j.tolist()
-		
 		if cfg.TEST.SOFT_NMS.ENABLED:
 			nms_dets, _ = box_utils.soft_nms(
 				dets_j,
@@ -841,11 +838,6 @@ def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch
 			)
 		cls_boxes[j] = nms_dets
 	
-	if cfg.TEST.IOU_OUT:
-		path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
-		with open(os.path.join(path, "shifted_boxes.json"), 'w') as f:
-			json.dump(onecls_pred_boxes, f)
-	
 	# Limit to max_per_image detections **over all classes**
 	if cfg.TEST.DETECTIONS_PER_IM > 0:
 		image_scores = np.hstack(
@@ -860,6 +852,11 @@ def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch
 	im_results = np.vstack([cls_boxes[j] for j in range(1, num_classes)])
 	boxes = im_results[:, :-1]
 	scores = im_results[:, -1]
+	if cfg.TEST.IOU_OUT:
+		path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
+		with open(os.path.join(path, "shifted_boxes.json"), 'w') as f:
+			json.dump(boxes.tolist(), f)
+	
 	return scores, boxes, cls_boxes
 
 

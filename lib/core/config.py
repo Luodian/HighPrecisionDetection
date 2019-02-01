@@ -24,7 +24,6 @@ __C = AttrDict()
 #   from fast_rcnn_config import cfg
 cfg = __C
 
-
 # Random note: avoid using '.ON' as a config key since yaml converts it to True;
 # prefer 'ENABLED' instead
 
@@ -42,7 +41,7 @@ __C.TRAIN.DATASETS = ()
 # Each scale is the pixel size of an image's shortest side
 # If multiple scales are listed, then one is selected uniformly at random for
 # each training image (i.e., scale jitter data augmentation)
-__C.TRAIN.SCALES = (600, )
+__C.TRAIN.SCALES = (600,)
 
 # Max pixel size of the longest side of a scaled input image
 __C.TRAIN.MAX_SIZE = 1000
@@ -159,7 +158,6 @@ __C.TRAIN.GT_MIN_AREA = -1
 # Freeze the backbone architecture during training if set to True
 __C.TRAIN.FREEZE_CONV_BODY = False
 
-
 # ---------------------------------------------------------------------------- #
 # Data loader options
 # ---------------------------------------------------------------------------- #
@@ -169,7 +167,6 @@ __C.DATA_LOADER = AttrDict()
 # threads can cause GIL-based interference with Python Ops leading to *slower*
 # training; 4 seems to be the sweet spot in our experience)
 __C.DATA_LOADER.NUM_THREADS = 4
-
 
 # ---------------------------------------------------------------------------- #
 # Inference ('test') options
@@ -182,6 +179,7 @@ __C.TEST = AttrDict()
 __C.TEST.DATASETS = ()
 
 __C.TEST.IOU_OUT = False
+__C.TEST.IOU_OUT_VIS = False
 
 # Scale to use during testing (can NOT list multiple scales)
 # The scale is the pixel size of an image's shortest side
@@ -243,7 +241,6 @@ __C.TEST.FORCE_JSON_DATASET_EVAL = False
 # Not set for 1-stage models and 2-stage models with RPN subnetwork enabled
 __C.TEST.PRECOMPUTED_PROPOSALS = True
 
-
 # ---------------------------------------------------------------------------- #
 # Test-time augmentations for bounding box detection
 # See configs/test_time_aug/e2e_mask_rcnn_R-50-FPN_2x.yaml for an example
@@ -275,8 +272,8 @@ __C.TEST.BBOX_AUG.SCALE_H_FLIP = False
 
 # Apply scaling based on object size
 __C.TEST.BBOX_AUG.SCALE_SIZE_DEP = False
-__C.TEST.BBOX_AUG.AREA_TH_LO = 50**2
-__C.TEST.BBOX_AUG.AREA_TH_HI = 180**2
+__C.TEST.BBOX_AUG.AREA_TH_LO = 50 ** 2
+__C.TEST.BBOX_AUG.AREA_TH_HI = 180 ** 2
 
 # Each aspect ratio is relative to image width
 __C.TEST.BBOX_AUG.ASPECT_RATIOS = ()
@@ -312,7 +309,7 @@ __C.TEST.MASK_AUG.SCALE_H_FLIP = False
 
 # Apply scaling based on object size
 __C.TEST.MASK_AUG.SCALE_SIZE_DEP = False
-__C.TEST.MASK_AUG.AREA_TH = 180**2
+__C.TEST.MASK_AUG.AREA_TH = 180 ** 2
 
 # Each aspect ratio is relative to image width
 __C.TEST.MASK_AUG.ASPECT_RATIOS = ()
@@ -347,7 +344,7 @@ __C.TEST.KPS_AUG.SCALE_H_FLIP = False
 
 # Apply scaling based on object size
 __C.TEST.KPS_AUG.SCALE_SIZE_DEP = False
-__C.TEST.KPS_AUG.AREA_TH = 180**2
+__C.TEST.KPS_AUG.AREA_TH = 180 ** 2
 
 # Eeach aspect ratio is realtive to image width
 __C.TEST.KPS_AUG.ASPECT_RATIOS = ()
@@ -386,7 +383,6 @@ __C.TEST.BBOX_VOTE.SCORING_METHOD = 'ID'
 # Hyperparameter used by the scoring method (it has different meanings for
 # different methods)
 __C.TEST.BBOX_VOTE.SCORING_METHOD_BETA = 1.0
-
 
 # ---------------------------------------------------------------------------- #
 # Model options
@@ -458,7 +454,6 @@ __C.MODEL.LOAD_IMAGENET_PRETRAINED_WEIGHTS = True
 
 __C.MODEL.UNSUPERVISED_POSE = False
 
-
 # ---------------------------------------------------------------------------- #
 # RetinaNet options
 # ---------------------------------------------------------------------------- #
@@ -522,7 +517,6 @@ __C.RETINANET.SOFTMAX = False
 # Inference cls score threshold, anchors with score > INFERENCE_TH are
 # considered for inference
 __C.RETINANET.INFERENCE_TH = 0.05
-
 
 # ---------------------------------------------------------------------------- #
 # Solver options
@@ -611,7 +605,6 @@ __C.SOLVER.SCALE_MOMENTUM_THRESHOLD = 1.1
 # threshold (prevents linear warm up from spamming the training log)
 __C.SOLVER.LOG_LR_CHANGE_THRESHOLD = 1.1
 
-
 # ---------------------------------------------------------------------------- #
 # Fast R-CNN options
 # ---------------------------------------------------------------------------- #
@@ -647,7 +640,6 @@ __C.FAST_RCNN.ROI_XFORM_SAMPLING_RATIO = 0
 # pretrained FC layers like in VGG16, and will ignore this option
 __C.FAST_RCNN.ROI_XFORM_RESOLUTION = 14
 
-
 # ---------------------------------------------------------------------------- #
 # RPN options
 # ---------------------------------------------------------------------------- #
@@ -677,7 +669,6 @@ __C.RPN.STRIDE = 16
 
 # RPN anchor aspect ratios
 __C.RPN.ASPECT_RATIOS = (0.5, 1, 2)
-
 
 # ---------------------------------------------------------------------------- #
 # FPN options
@@ -732,7 +723,6 @@ __C.FPN.EXTRA_CONV_LEVELS = False
 # Use GroupNorm in the FPN-specific layers (lateral, etc.)
 __C.FPN.USE_GN = False
 
-
 # ---------------------------------------------------------------------------- #
 # Mask R-CNN options ("MRCNN" means Mask R-CNN)
 # ---------------------------------------------------------------------------- #
@@ -782,7 +772,6 @@ __C.MRCNN.WEIGHT_LOSS_MASK = 1.0
 __C.MRCNN.THRESH_BINARIZE = 0.5
 
 __C.MRCNN.MEMORY_EFFICIENT_LOSS = True  # TODO
-
 
 # ---------------------------------------------------------------------------- #
 # Keyoint Mask R-CNN options ("KRCNN" = Mask R-CNN with Keypoint support)
@@ -861,7 +850,6 @@ __C.KRCNN.LOSS_WEIGHT = 1.0
 # for detailed discussion.
 __C.KRCNN.NORMALIZE_BY_VISIBLE_KEYPOINTS = True
 
-
 # ---------------------------------------------------------------------------- #
 # R-FCN options
 # ---------------------------------------------------------------------------- #
@@ -869,7 +857,6 @@ __C.RFCN = AttrDict()
 
 # Position-sensitive RoI pooling output grid size (height and width)
 __C.RFCN.PS_GRID_SIZE = 3
-
 
 # ---------------------------------------------------------------------------- #
 # ResNets options ("ResNets" = ResNet and ResNeXt)
@@ -909,7 +896,6 @@ __C.RESNETS.IMAGENET_PRETRAINED_WEIGHTS = ''
 # Use GroupNorm instead of BatchNorm
 __C.RESNETS.USE_GN = False
 
-
 # ---------------------------------------------------------------------------- #
 # GroupNorm options
 # ---------------------------------------------------------------------------- #
@@ -920,7 +906,6 @@ __C.GROUP_NORM.DIM_PER_GP = -1
 __C.GROUP_NORM.NUM_GROUPS = 32
 # GroupNorm's small constant in the denominator
 __C.GROUP_NORM.EPSILON = 1e-5
-
 
 # ---------------------------------------------------------------------------- #
 # MISC options
@@ -1003,169 +988,171 @@ __C.PYTORCH_VERSION_LESS_THAN_040 = False
 # training forward computation with box head.
 # ---------------------------------------------------------------------------- #
 _SHARE_RES5_HEADS = set(
-    [
-        'mask_rcnn_heads.mask_rcnn_fcn_head_v0upshare',
-    ]
+	[
+		'mask_rcnn_heads.mask_rcnn_fcn_head_v0upshare',
+	]
 )
 
 
-def assert_and_infer_cfg(make_immutable=True):
-    """Call this function in your script after you have finished setting all cfg
-    values that are necessary (e.g., merging a config from a file, merging
-    command line config options, etc.). By default, this function will also
-    mark the global cfg as immutable to prevent changing the global cfg settings
-    during script execution (which can lead to hard to debug errors or code
-    that's harder to understand than is necessary).
-    """
-    if __C.MODEL.RPN_ONLY or __C.MODEL.FASTER_RCNN:
-        __C.RPN.RPN_ON = True
-    if __C.RPN.RPN_ON or __C.RETINANET.RETINANET_ON:
-        __C.TEST.PRECOMPUTED_PROPOSALS = False
-    if __C.MODEL.LOAD_IMAGENET_PRETRAINED_WEIGHTS:
-        assert __C.RESNETS.IMAGENET_PRETRAINED_WEIGHTS, \
-            "Path to the weight file must not be empty to load imagenet pertrained resnets."
-    if set([__C.MRCNN.ROI_MASK_HEAD, __C.KRCNN.ROI_KEYPOINTS_HEAD]) & _SHARE_RES5_HEADS:
-        __C.MODEL.SHARE_RES5 = True
-    if version.parse(torch.__version__) < version.parse('0.4.0'):
-        __C.PYTORCH_VERSION_LESS_THAN_040 = True
-        # create alias for PyTorch version less than 0.4.0
-        init.uniform_ = init.uniform
-        init.normal_ = init.normal
-        init.constant_ = init.constant
-        nn.GroupNorm = mynn.GroupNorm
-    if make_immutable:
-        cfg.immutable(True)
+def assert_and_infer_cfg(make_immutable = True):
+	"""Call this function in your script after you have finished setting all cfg
+	values that are necessary (e.g., merging a config from a file, merging
+	command line config options, etc.). By default, this function will also
+	mark the global cfg as immutable to prevent changing the global cfg settings
+	during script execution (which can lead to hard to debug errors or code
+	that's harder to understand than is necessary).
+	"""
+	if __C.MODEL.RPN_ONLY or __C.MODEL.FASTER_RCNN:
+		__C.RPN.RPN_ON = True
+	if __C.RPN.RPN_ON or __C.RETINANET.RETINANET_ON:
+		__C.TEST.PRECOMPUTED_PROPOSALS = False
+	if __C.MODEL.LOAD_IMAGENET_PRETRAINED_WEIGHTS:
+		assert __C.RESNETS.IMAGENET_PRETRAINED_WEIGHTS, \
+			"Path to the weight file must not be empty to load imagenet pertrained resnets."
+	if set([__C.MRCNN.ROI_MASK_HEAD, __C.KRCNN.ROI_KEYPOINTS_HEAD]) & _SHARE_RES5_HEADS:
+		__C.MODEL.SHARE_RES5 = True
+	if version.parse(torch.__version__) < version.parse('0.4.0'):
+		__C.PYTORCH_VERSION_LESS_THAN_040 = True
+		# create alias for PyTorch version less than 0.4.0
+		init.uniform_ = init.uniform
+		init.normal_ = init.normal
+		init.constant_ = init.constant
+		nn.GroupNorm = mynn.GroupNorm
+	if make_immutable:
+		cfg.immutable(True)
 
 
 def merge_cfg_from_file(cfg_filename):
-    """Load a yaml config file and merge it into the global config."""
-    with open(cfg_filename, 'r') as f:
-        yaml_cfg = AttrDict(yaml.load(f))
-    _merge_a_into_b(yaml_cfg, __C)
+	"""Load a yaml config file and merge it into the global config."""
+	with open(cfg_filename, 'r') as f:
+		yaml_cfg = AttrDict(yaml.load(f))
+	_merge_a_into_b(yaml_cfg, __C)
+
 
 cfg_from_file = merge_cfg_from_file
 
 
 def merge_cfg_from_cfg(cfg_other):
-    """Merge `cfg_other` into the global config."""
-    _merge_a_into_b(cfg_other, __C)
+	"""Merge `cfg_other` into the global config."""
+	_merge_a_into_b(cfg_other, __C)
 
 
 def merge_cfg_from_list(cfg_list):
-    """Merge config keys, values in a list (e.g., from command line) into the
-    global config. For example, `cfg_list = ['TEST.NMS', 0.5]`.
-    """
-    assert len(cfg_list) % 2 == 0
-    for full_key, v in zip(cfg_list[0::2], cfg_list[1::2]):
-        # if _key_is_deprecated(full_key):
-        #     continue
-        # if _key_is_renamed(full_key):
-        #     _raise_key_rename_error(full_key)
-        key_list = full_key.split('.')
-        d = __C
-        for subkey in key_list[:-1]:
-            assert subkey in d, 'Non-existent key: {}'.format(full_key)
-            d = d[subkey]
-        subkey = key_list[-1]
-        assert subkey in d, 'Non-existent key: {}'.format(full_key)
-        value = _decode_cfg_value(v)
-        value = _check_and_coerce_cfg_value_type(
-            value, d[subkey], subkey, full_key
-        )
-        d[subkey] = value
+	"""Merge config keys, values in a list (e.g., from command line) into the
+	global config. For example, `cfg_list = ['TEST.NMS', 0.5]`.
+	"""
+	assert len(cfg_list) % 2 == 0
+	for full_key, v in zip(cfg_list[0::2], cfg_list[1::2]):
+		# if _key_is_deprecated(full_key):
+		#     continue
+		# if _key_is_renamed(full_key):
+		#     _raise_key_rename_error(full_key)
+		key_list = full_key.split('.')
+		d = __C
+		for subkey in key_list[:-1]:
+			assert subkey in d, 'Non-existent key: {}'.format(full_key)
+			d = d[subkey]
+		subkey = key_list[-1]
+		assert subkey in d, 'Non-existent key: {}'.format(full_key)
+		value = _decode_cfg_value(v)
+		value = _check_and_coerce_cfg_value_type(
+			value, d[subkey], subkey, full_key
+		)
+		d[subkey] = value
+
 
 cfg_from_list = merge_cfg_from_list
 
 
-def _merge_a_into_b(a, b, stack=None):
-    """Merge config dictionary a into config dictionary b, clobbering the
-    options in b whenever they are also specified in a.
-    """
-    assert isinstance(a, AttrDict), 'Argument `a` must be an AttrDict'
-    assert isinstance(b, AttrDict), 'Argument `b` must be an AttrDict'
-
-    for k, v_ in a.items():
-        full_key = '.'.join(stack) + '.' + k if stack is not None else k
-        # a must specify keys that are in b
-        if k not in b:
-            # if _key_is_deprecated(full_key):
-            #     continue
-            # elif _key_is_renamed(full_key):
-            #     _raise_key_rename_error(full_key)
-            # else:
-            raise KeyError('Non-existent config key: {}'.format(full_key))
-
-        v = copy.deepcopy(v_)
-        v = _decode_cfg_value(v)
-        v = _check_and_coerce_cfg_value_type(v, b[k], k, full_key)
-
-        # Recursively merge dicts
-        if isinstance(v, AttrDict):
-            try:
-                stack_push = [k] if stack is None else stack + [k]
-                _merge_a_into_b(v, b[k], stack=stack_push)
-            except BaseException:
-                raise
-        else:
-            b[k] = v
+def _merge_a_into_b(a, b, stack = None):
+	"""Merge config dictionary a into config dictionary b, clobbering the
+	options in b whenever they are also specified in a.
+	"""
+	assert isinstance(a, AttrDict), 'Argument `a` must be an AttrDict'
+	assert isinstance(b, AttrDict), 'Argument `b` must be an AttrDict'
+	
+	for k, v_ in a.items():
+		full_key = '.'.join(stack) + '.' + k if stack is not None else k
+		# a must specify keys that are in b
+		if k not in b:
+			# if _key_is_deprecated(full_key):
+			#     continue
+			# elif _key_is_renamed(full_key):
+			#     _raise_key_rename_error(full_key)
+			# else:
+			raise KeyError('Non-existent config key: {}'.format(full_key))
+		
+		v = copy.deepcopy(v_)
+		v = _decode_cfg_value(v)
+		v = _check_and_coerce_cfg_value_type(v, b[k], k, full_key)
+		
+		# Recursively merge dicts
+		if isinstance(v, AttrDict):
+			try:
+				stack_push = [k] if stack is None else stack + [k]
+				_merge_a_into_b(v, b[k], stack = stack_push)
+			except BaseException:
+				raise
+		else:
+			b[k] = v
 
 
 def _decode_cfg_value(v):
-    """Decodes a raw config value (e.g., from a yaml config files or command
-    line argument) into a Python object.
-    """
-    # Configs parsed from raw yaml will contain dictionary keys that need to be
-    # converted to AttrDict objects
-    if isinstance(v, dict):
-        return AttrDict(v)
-    # All remaining processing is only applied to strings
-    if not isinstance(v, six.string_types):
-        return v
-    # Try to interpret `v` as a:
-    #   string, number, tuple, list, dict, boolean, or None
-    try:
-        v = literal_eval(v)
-    # The following two excepts allow v to pass through when it represents a
-    # string.
-    #
-    # Longer explanation:
-    # The type of v is always a string (before calling literal_eval), but
-    # sometimes it *represents* a string and other times a data structure, like
-    # a list. In the case that v represents a string, what we got back from the
-    # yaml parser is 'foo' *without quotes* (so, not '"foo"'). literal_eval is
-    # ok with '"foo"', but will raise a ValueError if given 'foo'. In other
-    # cases, like paths (v = 'foo/bar' and not v = '"foo/bar"'), literal_eval
-    # will raise a SyntaxError.
-    except ValueError:
-        pass
-    except SyntaxError:
-        pass
-    return v
+	"""Decodes a raw config value (e.g., from a yaml config files or command
+	line argument) into a Python object.
+	"""
+	# Configs parsed from raw yaml will contain dictionary keys that need to be
+	# converted to AttrDict objects
+	if isinstance(v, dict):
+		return AttrDict(v)
+	# All remaining processing is only applied to strings
+	if not isinstance(v, six.string_types):
+		return v
+	# Try to interpret `v` as a:
+	#   string, number, tuple, list, dict, boolean, or None
+	try:
+		v = literal_eval(v)
+	# The following two excepts allow v to pass through when it represents a
+	# string.
+	#
+	# Longer explanation:
+	# The type of v is always a string (before calling literal_eval), but
+	# sometimes it *represents* a string and other times a data structure, like
+	# a list. In the case that v represents a string, what we got back from the
+	# yaml parser is 'foo' *without quotes* (so, not '"foo"'). literal_eval is
+	# ok with '"foo"', but will raise a ValueError if given 'foo'. In other
+	# cases, like paths (v = 'foo/bar' and not v = '"foo/bar"'), literal_eval
+	# will raise a SyntaxError.
+	except ValueError:
+		pass
+	except SyntaxError:
+		pass
+	return v
 
 
 def _check_and_coerce_cfg_value_type(value_a, value_b, key, full_key):
-    """Checks that `value_a`, which is intended to replace `value_b` is of the
-    right type. The type is correct if it matches exactly or is one of a few
-    cases in which the type can be easily coerced.
-    """
-    # The types must match (with some exceptions)
-    type_b = type(value_b)
-    type_a = type(value_a)
-    if type_a is type_b:
-        return value_a
-
-    # Exceptions: numpy arrays, strings, tuple<->list
-    if isinstance(value_b, np.ndarray):
-        value_a = np.array(value_a, dtype=value_b.dtype)
-    elif isinstance(value_b, six.string_types):
-        value_a = str(value_a)
-    elif isinstance(value_a, tuple) and isinstance(value_b, list):
-        value_a = list(value_a)
-    elif isinstance(value_a, list) and isinstance(value_b, tuple):
-        value_a = tuple(value_a)
-    else:
-        raise ValueError(
-            'Type mismatch ({} vs. {}) with values ({} vs. {}) for config '
-            'key: {}'.format(type_b, type_a, value_b, value_a, full_key)
-        )
-    return value_a
+	"""Checks that `value_a`, which is intended to replace `value_b` is of the
+	right type. The type is correct if it matches exactly or is one of a few
+	cases in which the type can be easily coerced.
+	"""
+	# The types must match (with some exceptions)
+	type_b = type(value_b)
+	type_a = type(value_a)
+	if type_a is type_b:
+		return value_a
+	
+	# Exceptions: numpy arrays, strings, tuple<->list
+	if isinstance(value_b, np.ndarray):
+		value_a = np.array(value_a, dtype = value_b.dtype)
+	elif isinstance(value_b, six.string_types):
+		value_a = str(value_a)
+	elif isinstance(value_a, tuple) and isinstance(value_b, list):
+		value_a = list(value_a)
+	elif isinstance(value_a, list) and isinstance(value_b, tuple):
+		value_a = tuple(value_a)
+	else:
+		raise ValueError(
+			'Type mismatch ({} vs. {}) with values ({} vs. {}) for config '
+			'key: {}'.format(type_b, type_a, value_b, value_a, full_key)
+		)
+	return value_a
