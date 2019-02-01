@@ -25,8 +25,9 @@ def precision_recall(gt, pred):
 		y_right = np.where(y_pred > score)[0]
 		print("Thresh {:.2f}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
 		                                                               len(y_right) * 1. / len(y_pred)))
-		
-method = "rpn_only_score_nms"
+
+
+method = "FPN_iou_nms"
 with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
 

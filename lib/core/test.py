@@ -134,14 +134,21 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 			stage1_cls_score = np.array(json.load(f), dtype = "float32")
 		
 		# 顾老师的NMS流程，不知道加不加上？
-		bbox_with_score = np.hstack((stage1_pred_boxes, stage1_pred_iou[:, np.newaxis])).astype(np.float32,
-		                                                                                        copy = False)
-		keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
+		if cfg.FAST_RCNN.IOU_NMS:
+			bbox_with_score = np.hstack((stage1_pred_boxes, stage1_pred_iou[:, np.newaxis])).astype(np.float32,
+			                                                                                        copy = False)
+			keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
+			dict_i['keep'] = keep
+			
+		elif cfg.FAST_RCNN.SCORE_NMS:
+			bbox_with_score = np.hstack((stage1_pred_boxes, stage1_cls_score[:, np.newaxis])).astype(np.float32,
+			                                                                                         copy = False)
+			keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
+			dict_i['keep'] = keep
 		
 		dict_i['shift'] = stage1_pred_iou.tolist()
 		dict_i['stage1_pred_boxes'] = stage1_pred_boxes.tolist()
 		dict_i['stage2_pred_boxes'] = stage2_pred_boxes.tolist()
-		dict_i['keep'] = keep
 		dict_i['rpn_score'] = stage1_cls_score.tolist()
 	
 	if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
