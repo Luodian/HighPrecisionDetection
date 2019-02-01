@@ -619,6 +619,7 @@ __C.FAST_RCNN = AttrDict()
 
 # Debug mode
 __C.FAST_RCNN.FAST_HEAD2_DEBUG = False
+__C.FAST_RCNN.FAST_HEAD2_DEBUG_VIS = False
 
 # The type of RoI head to use for bounding box classification and regression
 # The string must match a function this is imported in modeling.model_builder

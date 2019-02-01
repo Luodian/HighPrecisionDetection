@@ -358,16 +358,16 @@ class Generalized_RCNN(nn.Module):
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
 						json.dump(stage1_pred_iou, f)
 			
-			else:
-				rois = rpn_ret['rois']
-				# unscale back to raw image space
-				boxes = rois[:, 1:5]
-				box_deltas = bbox_pred.reshape([-1, bbox_pred.shape[-1]])
-				stage2_rois = box_utils.bbox_transform(boxes, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
-				
-				# stage2_roialign
-				box_feat = self.Box_Head(blob_conv, rpn_ret)
-				cls_score, bbox_pred = self.Box_Outs(box_feat)
+				else:
+					rois = rpn_ret['rois']
+					# unscale back to raw image space
+					boxes = rois[:, 1:5]
+					box_deltas = bbox_pred.reshape([-1, bbox_pred.shape[-1]])
+					stage2_rois = box_utils.bbox_transform(boxes, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
+					
+					# stage2_roialign
+					box_feat = self.Box_Head(blob_conv, rpn_ret)
+					cls_score, bbox_pred = self.Box_Outs(box_feat)
 		
 		# get stage2 pred_boxes here
 		
