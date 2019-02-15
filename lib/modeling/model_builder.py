@@ -327,9 +327,10 @@ class Generalized_RCNN(nn.Module):
 					# Add some variance to box delta
 					import random
 					
-					for i in range(len(stage2_box_deltas)):
-						for j in range(len(stage2_box_deltas[i])):
-							stage2_box_deltas[i][j] *= random.uniform(0.9, 1.1)
+					if cfg.FAST_RCNN.STAGE1_TURBULENCE:
+						for i in range(len(stage2_box_deltas)):
+							for j in range(len(stage2_box_deltas[i])):
+								stage2_box_deltas[i][j] *= random.uniform(0.9, 1.1)
 					
 					stage2_cls_out = box_utils.bbox_transform(stage2_rois, stage2_box_deltas,
 					                                          cfg.MODEL.BBOX_REG_WEIGHTS)

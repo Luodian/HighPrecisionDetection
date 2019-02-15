@@ -148,7 +148,7 @@ def main():
 
         im_name, _ = os.path.splitext(os.path.basename(imglist[i]))
         
-        cls_boxes, cls_segms, cls_keyps = im_detect_all(maskRCNN, im, timers=timers, im_name_tag = im_name)
+        cls_boxes, cls_segms, cls_keyps, _ = im_detect_all(maskRCNN, im, timers=timers)
         
         vis_utils.vis_one_image(
             im[:, :, ::-1],  # BGR -> RGB for visualization
