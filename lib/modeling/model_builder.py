@@ -278,32 +278,28 @@ class Generalized_RCNN(nn.Module):
 					shift_boxes = box_utils.bbox_transform(rois, box_deltas, cfg.MODEL.BBOX_REG_WEIGHTS)
 					shift_boxes = box_utils.clip_tiled_boxes(shift_boxes, im_info.data.cpu().numpy().squeeze()[0:2])
 					num_classes = cfg.MODEL.NUM_CLASSES
-					# onecls_pred_boxes = []
-					# for j in range(1, num_classes):
-					# 	inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
-					# 	boxes_j = shift_boxes[inds, j * 4:(j + 1) * 4]
-					# 	onecls_pred_boxes += boxes_j.tolist()
-					#
-					# stage2_rois = np.array(onecls_pred_boxes, dtype = np.float32)
 					
-					# Set cls 0's score to zero
-					cls_score_ignore_bg = np.zeros((cls_score.shape), dtype = np.float32)
-					for ind, item in enumerate(cls_score_ignore_bg):
-						cls_score_ignore_bg[ind, 1:num_classes] = cls_score[ind, 1:num_classes]
+					onecls_pred_boxes = []
+					onecls_score = []
+					for j in range(1, num_classes):
+						inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
+						boxes_j = shift_boxes[inds, j * 4:(j + 1) * 4]
+						score_j = cls_score[inds, j]
+						onecls_pred_boxes += boxes_j.tolist()
+						onecls_score += score_j.tolist()
 					
-					# Select max element of each rows and map it into its scores
-					stage2_rois = np.zeros((shift_boxes.shape[0], 4), dtype = np.float32)
-					max_ind = np.argmax(cls_score_ignore_bg, axis = 1)
-					for ind, item in enumerate(max_ind):
-						stage2_rois[ind] = shift_boxes[ind, item * 4: (item + 1) * 4]
+					stage2_rois_score = np.array(onecls_score, dtype = np.float32)
+					stage2_rois = np.array(onecls_pred_boxes, dtype = np.float32)
 					
 					# Redistribute stage2_rois using fpn_utils module provided functions
 					lvl_min = cfg.FPN.ROI_MIN_LEVEL
 					lvl_max = cfg.FPN.ROI_MAX_LEVEL
+					# calculate by formula
 					lvls = fpn_utils.map_rois_to_fpn_levels(stage2_rois, lvl_min, lvl_max)
 					
 					# TAG: We might need to visualize "stage2_rois" to make sure.
 					rois_idx_order = np.empty((0,))
+					rpn_ret["rois"] = np.hstack((stage2_rois, stage2_rois_score[:, np.newaxis]))
 					for output_idx, lvl in enumerate(range(lvl_min, lvl_max + 1)):
 						idx_lvl = np.where(lvls == lvl)[0]
 						rois_lvl = stage2_rois[idx_lvl, :]
@@ -311,23 +307,18 @@ class Generalized_RCNN(nn.Module):
 						rpn_ret['rois_fpn{}'.format(lvl)] = rois_lvl
 						print("Rois_FPN_{} has been replaced!".format(lvl))
 					
-					rois_idx_restore = np.argsort(rois_idx_order)
+					rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy = False)
+					rpn_ret['rois_idx_restore_int32'] = rois_idx_restore
+					# Go through 2nd stage of FPN and fast_head
 					stage2_feat = self.Box_Head(blob_conv, rpn_ret)
 					stage2_cls_score, stage2_bbox_pred = self.Box_Outs(stage2_feat)
-					
-					# get stage2 pred_boxes here
-					# Set cls 0's score to zero
-					cls_score_ignore_bg = np.zeros((stage2_cls_score.shape), dtype = np.float32)
-					for ind, item in enumerate(stage2_cls_score):
-						cls_score_ignore_bg[ind, 1:num_classes] = stage2_cls_score[ind, 1:num_classes]
 					
 					# Transform shift value to original one to get final pred boxes coordinates
 					stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
 					stage2_box_deltas = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
 					# Add some variance to box delta
-					import random
-					
 					if cfg.FAST_RCNN.STAGE1_TURBULENCE:
+						import random
 						for i in range(len(stage2_box_deltas)):
 							for j in range(len(stage2_box_deltas[i])):
 								stage2_box_deltas[i][j] *= random.uniform(0.9, 1.1)
@@ -336,26 +327,34 @@ class Generalized_RCNN(nn.Module):
 					                                          cfg.MODEL.BBOX_REG_WEIGHTS)
 					stage2_cls_out = box_utils.clip_tiled_boxes(stage2_cls_out,
 					                                            im_info.data.cpu().numpy().squeeze()[0:2])
+					onecls_pred_boxes = []
+					for j in range(1, num_classes):
+						inds = np.where(stage2_cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
+						boxes_j = stage2_cls_out[inds, j * 4:(j + 1) * 4]
+						onecls_pred_boxes += boxes_j.tolist()
 					
-					# Select max element of each rows and map it into its scores
-					stage2_final_boxes = np.zeros((stage2_cls_out.shape[0], 4), dtype = np.float32)
-					
-					max_ind = np.argmax(cls_score_ignore_bg, axis = 1)
-					for ind, item in enumerate(max_ind):
-						stage2_final_boxes[ind] = stage2_cls_out[ind, item * 4: (item + 1) * 4]
-					
+					stage2_final_boxes = np.array(onecls_pred_boxes, dtype = np.float32)
 					# Restore stage2_pred_boxes to match the index with stage2_rois, Compute IOU between final_boxes
 					# and stage2_rois, one by one
-					restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
-					stage1_pred_iou = []
-					for ind, item in enumerate(stage2_rois):
-						stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
-						stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape((1, 4))
-						iou = box_utils.bbox_overlaps(stage1, stage2)
-						stage1_pred_iou.append(iou.squeeze().item())
+					flag = "cross_product"
+					if flag == "element_wise" and stage2_final_boxes.shape[0] == stage2_rois.shape[0]:
+						restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
+						stage1_pred_iou = []
+						for ind, item in enumerate(stage2_rois):
+							stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
+							stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape((1, 4))
+							iou = box_utils.bbox_overlaps(stage1, stage2)
+							stage1_pred_iou.append(iou.squeeze().item())
+					
+					elif flag == "cross_product":
+						iou = box_utils.bbox_overlaps(stage2_rois, stage2_final_boxes)
+						stage1_pred_iou = iou.max(axis = 1)
 					
 					# stage1_pred is another name of stage2_rois
 					assert len(stage1_pred_iou) == len(stage2_rois)
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_score.json", "w") as f:
+						json.dump(stage2_rois_score.tolist(), f)
+					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_boxes.json", 'w') as f:
 						json.dump(stage2_rois.tolist(), f)
 					
@@ -467,8 +466,7 @@ class Generalized_RCNN(nn.Module):
 						if cfg.CROP_RESIZE_WITH_MAX_POOL:
 							xform_out = F.max_pool2d(xform_out, 2, 2)
 					elif method == 'RoIAlign':
-						xform_out = RoIAlignFunction(
-							resolution, resolution, sc, sampling_ratio)(bl_in, rois)
+						xform_out = RoIAlignFunction(resolution, resolution, sc, sampling_ratio)(bl_in, rois)
 					bl_out_list.append(xform_out)
 			
 			# The pooled features from all levels are concatenated along the

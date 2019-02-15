@@ -407,15 +407,15 @@ def test_net(
 		# 	dict_all[im_name].pop('after_nms_stage2_pred_boxes')
 		#
 		# 	dict_all[im_name].pop('keep')
-			# if i == 100:
-			# 	if cfg.FAST_RCNN.IOU_NMS:
-			# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_IOU_NMS.json", 'w') as f:
-			# 			f.write(json.dumps(dict_all))
-			# 			print("In {} round, saved dict_all ".format(i))
-			# 	elif cfg.FAST_RCNN.SCORE_NMS:
-			# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_SCORE_NMS.json", 'w') as f:
-			# 			f.write(json.dumps(dict_all))
-			# 			print("In {} round, saved dict_all ".format(i))
+		# if i == 100:
+		# 	if cfg.FAST_RCNN.IOU_NMS:
+		# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_IOU_NMS.json", 'w') as f:
+		# 			f.write(json.dumps(dict_all))
+		# 			print("In {} round, saved dict_all ".format(i))
+		# 	elif cfg.FAST_RCNN.SCORE_NMS:
+		# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_SCORE_NMS.json", 'w') as f:
+		# 			f.write(json.dumps(dict_all))
+		# 			print("In {} round, saved dict_all ".format(i))
 		
 		# if cfg.TEST.IOU_OUT:
 		# 	gt_i = cached_roidb[i]['boxes']
