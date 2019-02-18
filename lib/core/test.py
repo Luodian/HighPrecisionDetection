@@ -49,6 +49,10 @@ import utils.keypoints as keypoint_utils
 import json
 import os
 
+import logging
+logger = logging.getLogger(__name__)
+
+
 
 def predbox_roi_iou(raw_roi, pred_box):
 	if raw_roi.size == 0:
@@ -90,6 +94,10 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 	timers['misc_bbox'].tic()
 	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
 		
+		if im_name_tag == '000000008277':
+			logger.info("Found KKKKK")
+			
+		
 		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
 			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
 		
@@ -98,6 +106,13 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		
 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'r') as f:
 			dets_cls = json.load(f)
+		
+		with open(os.path.join(path, "stage1_score.json"), "r") as f:
+			stage1_score = json.load(f)
+		
+		dict_i['stage1_out'] = stage1_pred_boxes
+		dict_i['shift_iou'] = stage1_pred_iou
+		dict_i['stage1_score'] = stage1_score
 		
 		scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_pred_iou, dets_cls)
 	# score and boxes are from the whole image after score thresholding and nms
@@ -860,22 +875,8 @@ def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch
 				method = cfg.TEST.SOFT_NMS.METHOD
 			)
 		else:
-			if cfg.FAST_RCNN.IOU_NMS:
-				
-				path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
-				with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
-					stage1_pred_iou = np.array(json.load(f), dtype = "float32")
-				
-				with open(os.path.join(path, "stage1_pred_boxes.json"), "r") as f:
-					stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
-				
-				bbox_with_score = np.hstack((stage1_pred_boxes, stage1_pred_iou[:, np.newaxis])).astype(np.float32,
-				                                                                                        copy = False)
-				keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
-				nms_dets = bbox_with_score[keep, :]
-			else:
-				keep = box_utils.nms(dets_j, cfg.TEST.NMS)
-				nms_dets = dets_j[keep, :]
+			keep = box_utils.nms(dets_j, cfg.TEST.NMS)
+			nms_dets = dets_j[keep, :]
 		# Refine the post-NMS boxes using bounding-box voting
 		if cfg.TEST.BBOX_VOTE.ENABLED:
 			nms_dets = box_utils.box_voting(

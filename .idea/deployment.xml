@@ -7,6 +7,10 @@
           <mappings>
             <mapping deploy="/nfs/project/libo_i/IOU.pytorch" local="$PROJECT_DIR$" />
           </mappings>
+          <excludedPaths>
+            <excludedPath path="/nfs/project/libo_i/IOU.pytorch/data" />
+            <excludedPath path="/nfs/project/libo_i/IOU.pytorch/2stage_iminfo" />
+          </excludedPaths>
         </serverdata>
       </paths>
     </serverData>

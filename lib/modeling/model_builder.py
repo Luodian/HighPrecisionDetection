@@ -312,7 +312,7 @@ class Generalized_RCNN(nn.Module):
 						rois_lvl = stage2_rois[idx_lvl, :]
 						rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
 						rpn_ret['rois_fpn{}'.format(lvl)] = rois_lvl
-						# print("Rois_FPN_{} has been replaced!".format(lvl))
+					# print("Rois_FPN_{} has been replaced!".format(lvl))
 					
 					rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy = False)
 					rpn_ret['rois_idx_restore_int32'] = rois_idx_restore
@@ -343,18 +343,21 @@ class Generalized_RCNN(nn.Module):
 					stage2_final_boxes = np.array(onecls_pred_boxes, dtype = np.float32)
 					# Restore stage2_pred_boxes to match the index with stage2_rois, Compute IOU between final_boxes
 					# and stage2_rois, one by one
-					flag = "cross_product"
-					if flag == "element_wise" and stage2_final_boxes.shape[0] == stage2_rois.shape[0]:
-						restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
-						stage1_pred_iou = []
-						for ind, item in enumerate(stage2_rois):
-							stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
-							stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape((1, 4))
-							iou = box_utils.bbox_overlaps(stage1, stage2)
-							stage1_pred_iou.append(iou.squeeze().item())
+					flag = "element_wise"
+					if flag == "element_wise":
+						if stage2_final_boxes.shape[0] == stage2_rois.shape[0]:
+							restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
+							stage1_pred_iou = []
+							for ind, item in enumerate(stage2_rois):
+								stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
+								stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape((1, 4))
+								iou = box_utils.bbox_overlaps(stage1, stage2)
+								stage1_pred_iou.append(iou.squeeze().item())
+						else:
+							logger.info("Mistake while processing {}".format(str(im_info)))
 					elif flag == "cross_product":
 						iou = box_utils.bbox_overlaps(stage2_rois, stage2_final_boxes)
-						stage1_pred_iou = iou.max(axis = 1)
+						stage1_pred_iou = iou.max(axis = 1).tolist()
 					
 					# stage1_pred is another name of stage2_rois
 					assert len(stage1_pred_iou) == len(stage2_rois)
@@ -365,7 +368,7 @@ class Generalized_RCNN(nn.Module):
 						json.dump(stage2_rois.tolist(), f)
 					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
-						json.dump(stage1_pred_iou.tolist(), f)
+						json.dump(stage1_pred_iou, f)
 					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage2_pred_boxes.json", 'w') as f:
 						json.dump(stage2_final_boxes.tolist(), f)

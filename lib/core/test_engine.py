@@ -287,187 +287,177 @@ def test_net(
 		
 		cls_boxes_i, cls_segms_i, cls_keyps_i, dict_all[im_name] = im_detect_all(model, im, box_proposals, timers,
 		                                                                         im_name_tag = im_name)
-		# if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
-		# 	gt_i = cached_roidb[i]['boxes']
-		# 	shift_gt_iou = predbox_roi_iou(np.array(dict_all[im_name]['stage1_pred_boxes'], dtype = np.float32),
-		# 	                               np.array(gt_i, dtype = "float32"))
+		if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
+			gt_i = cached_roidb[i]['boxes']
+			shift_gt_iou = predbox_roi_iou(np.array(dict_all[im_name]['stage1_out'], dtype = np.float32),
+			                               np.array(gt_i, dtype = "float32"))
+			
+			dict_all[im_name]['final_iou'] = shift_gt_iou.tolist()
+			dict_all[im_name]['shift_iou'] = dict_all[im_name]['shift_iou'].tolist()
+			
+			if im_name == '000000008277':
+				logger.info("Found KKKKK")
+			
+			dict_all[im_name].pop('stage1_out')
+			
+			if cfg.FAST_RCNN.FAST_HEAD2_DEBUG_VIS:
+				# Draw stage1 pred_boxes onto im and gt
+				dpi = 200
+				fig = plt.figure(frameon = False)
+				fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
+				ax = plt.Axes(fig, [0., 0., 1., 1.])
+				ax.axis('off')
+				fig.add_axes(ax)
+				ax.imshow(im[:, :, ::-1])
+				# 在im上添加gt
+				for item in gt_i:
+					ax.add_patch(
+						plt.Rectangle((item[0], item[1]),
+						              item[2] - item[0],
+						              item[3] - item[1],
+						              fill = False, edgecolor = 'r',
+						              linewidth = 0.1, alpha = 1))
+				
+				# 在im上添加proposals
+				cnt = 0
+				length = len(dict_all[im_name]['stage2_pred_boxes'])
+				for ind in range(length):
+					# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
+					stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
+					cnt += 1
+					ax.add_patch(
+						plt.Rectangle((stage1_item[0], stage1_item[1]),
+						              stage1_item[2] - stage1_item[0],
+						              stage1_item[3] - stage1_item[1],
+						              fill = False, edgecolor = 'g',
+						              linewidth = 0.6, alpha = 1))
+				
+				# ax.add_patch(
+				# 	plt.Rectangle((stage2_item[0], stage2_item[1]),
+				# 	              stage2_item[2] - stage2_item[0],
+				# 	              stage2_item[3] - stage2_item[1],
+				# 	              fill = False, edgecolor = 'w',
+				# 	              linewidth = 0.6, alpha = 1))
+				
+				# ax.text(
+				# 	stage1_item[0], stage1_item[1] - 2,
+				# 	"stage1_{}".format(str(cnt)),
+				# 	fontsize = 4,
+				# 	family = 'serif',
+				# 	bbox = dict(
+				# 		facecolor = 'g', alpha = 1, pad = 0, edgecolor = 'none'),
+				# 	color = 'white')
+				#
+				# ax.text(
+				# 	stage2_item[0], stage2_item[1] - 2,
+				# 	"stage2_{}".format(str(cnt)),
+				# 	fontsize = 4,
+				# 	family = 'serif',
+				# 	bbox = dict(
+				# 		facecolor = 'g', alpha = 1, pad = 0, edgecolor = 'none'),
+				# 	color = 'white')
+				
+				print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
+				fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/{}.png".format(im_name), dpi = dpi)
+				plt.close('all')
 		#
-		# 	dict_all[im_name]['final'] = shift_gt_iou.tolist()
+		# # Draw stage1 pred_boxes onto im and gt
+		# dpi = 200
+		# fig = plt.figure(frameon = False)
+		# fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
+		# ax = plt.Axes(fig, [0., 0., 1., 1.])
+		# ax.axis('off')
+		# fig.add_axes(ax)
+		# ax.imshow(im[:, :, ::-1])
+		# # 在im上添加gt
+		# for item in gt_i:
+		# 	ax.add_patch(
+		# 		plt.Rectangle((item[0], item[1]),
+		# 		              item[2] - item[0],
+		# 		              item[3] - item[1],
+		# 		              fill = False, edgecolor = 'r',
+		# 		              linewidth = 0.1, alpha = 1))
 		#
-		# 	keep = np.array(dict_all[im_name]['keep'])
-		# 	dict_all[im_name]['shift'] = np.array(dict_all[im_name]['shift'], dtype = np.float32)[keep].tolist()
-		# 	dict_all[im_name]['final'] = np.array(dict_all[im_name]['final'], dtype = np.float32)[keep].tolist()
-		# 	dict_all[im_name]['rpn_score'] = np.array(dict_all[im_name]['rpn_score'], dtype = np.float32)[
-		# 		keep].tolist()
-		# 	dict_all[im_name]['after_nms_stage1_pred_boxes'] = \
-		# 		np.array(dict_all[im_name]['stage1_pred_boxes'], dtype = np.float32)[keep].tolist()
-		# 	dict_all[im_name]['after_nms_stage2_pred_boxes'] = \
-		# 		np.array(dict_all[im_name]['stage2_pred_boxes'], dtype = np.float32)[keep].tolist()
+		# # 在im上添加proposals
+		# cnt = 0
+		# length = len(dict_all[im_name]['after_nms_stage1_pred_boxes'])
+		# for ind in range(length):
+		# 	# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
+		# 	stage1_item = dict_all[im_name]['after_nms_stage1_pred_boxes'][ind]
+		# 	cnt += 1
+		# 	ax.add_patch(
+		# 		plt.Rectangle((stage1_item[0], stage1_item[1]),
+		# 		              stage1_item[2] - stage1_item[0],
+		# 		              stage1_item[3] - stage1_item[1],
+		# 		              fill = False, edgecolor = 'g',
+		# 		              linewidth = 0.6, alpha = 1))
 		#
-		# 	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG_VIS:
-		# 		# Draw stage1 pred_boxes onto im and gt
-		# 		dpi = 200
-		# 		fig = plt.figure(frameon = False)
-		# 		fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
-		# 		ax = plt.Axes(fig, [0., 0., 1., 1.])
-		# 		ax.axis('off')
-		# 		fig.add_axes(ax)
-		# 		ax.imshow(im[:, :, ::-1])
-		# 		# 在im上添加gt
-		# 		for item in gt_i:
-		# 			ax.add_patch(
-		# 				plt.Rectangle((item[0], item[1]),
-		# 				              item[2] - item[0],
-		# 				              item[3] - item[1],
-		# 				              fill = False, edgecolor = 'r',
-		# 				              linewidth = 0.1, alpha = 1))
-		#
-		# 		# 在im上添加proposals
-		# 		cnt = 0
-		# 		length = len(dict_all[im_name]['stage2_pred_boxes'])
-		# 		for ind in range(length):
-		# 			# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
-		# 			stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
-		# 			cnt += 1
-		# 			ax.add_patch(
-		# 				plt.Rectangle((stage1_item[0], stage1_item[1]),
-		# 				              stage1_item[2] - stage1_item[0],
-		# 				              stage1_item[3] - stage1_item[1],
-		# 				              fill = False, edgecolor = 'g',
-		# 				              linewidth = 0.6, alpha = 1))
-		#
-		# 		# ax.add_patch(
-		# 		# 	plt.Rectangle((stage2_item[0], stage2_item[1]),
-		# 		# 	              stage2_item[2] - stage2_item[0],
-		# 		# 	              stage2_item[3] - stage2_item[1],
-		# 		# 	              fill = False, edgecolor = 'w',
-		# 		# 	              linewidth = 0.6, alpha = 1))
-		#
-		# 		# ax.text(
-		# 		# 	stage1_item[0], stage1_item[1] - 2,
-		# 		# 	"stage1_{}".format(str(cnt)),
-		# 		# 	fontsize = 4,
-		# 		# 	family = 'serif',
-		# 		# 	bbox = dict(
-		# 		# 		facecolor = 'g', alpha = 1, pad = 0, edgecolor = 'none'),
-		# 		# 	color = 'white')
-		# 		#
-		# 		# ax.text(
-		# 		# 	stage2_item[0], stage2_item[1] - 2,
-		# 		# 	"stage2_{}".format(str(cnt)),
-		# 		# 	fontsize = 4,
-		# 		# 	family = 'serif',
-		# 		# 	bbox = dict(
-		# 		# 		facecolor = 'g', alpha = 1, pad = 0, edgecolor = 'none'),
-		# 		# 	color = 'white')
-		#
-		# 		print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
-		# 		fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/{}.png".format(im_name), dpi = dpi)
-		# 		plt.close('all')
-		# 	#
-		# 	# # Draw stage1 pred_boxes onto im and gt
-		# 	# dpi = 200
-		# 	# fig = plt.figure(frameon = False)
-		# 	# fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
-		# 	# ax = plt.Axes(fig, [0., 0., 1., 1.])
-		# 	# ax.axis('off')
-		# 	# fig.add_axes(ax)
-		# 	# ax.imshow(im[:, :, ::-1])
-		# 	# # 在im上添加gt
-		# 	# for item in gt_i:
-		# 	# 	ax.add_patch(
-		# 	# 		plt.Rectangle((item[0], item[1]),
-		# 	# 		              item[2] - item[0],
-		# 	# 		              item[3] - item[1],
-		# 	# 		              fill = False, edgecolor = 'r',
-		# 	# 		              linewidth = 0.1, alpha = 1))
-		# 	#
-		# 	# # 在im上添加proposals
-		# 	# cnt = 0
-		# 	# length = len(dict_all[im_name]['after_nms_stage1_pred_boxes'])
-		# 	# for ind in range(length):
-		# 	# 	# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
-		# 	# 	stage1_item = dict_all[im_name]['after_nms_stage1_pred_boxes'][ind]
-		# 	# 	cnt += 1
-		# 	# 	ax.add_patch(
-		# 	# 		plt.Rectangle((stage1_item[0], stage1_item[1]),
-		# 	# 		              stage1_item[2] - stage1_item[0],
-		# 	# 		              stage1_item[3] - stage1_item[1],
-		# 	# 		              fill = False, edgecolor = 'g',
-		# 	# 		              linewidth = 0.6, alpha = 1))
-		# 	#
-		# 	# print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
-		# 	# fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/after_nms_{}.png".format(im_name),
-		# 	#             dpi = dpi)
-		# 	# plt.close('all')
-		#
-		# 	dict_all[im_name].pop('stage1_pred_boxes')
-		# 	dict_all[im_name].pop('stage2_pred_boxes')
-		# 	dict_all[im_name].pop('after_nms_stage1_pred_boxes')
-		# 	dict_all[im_name].pop('after_nms_stage2_pred_boxes')
-		#
-		# 	dict_all[im_name].pop('keep')
-		# if i == 100:
-		# 	if cfg.FAST_RCNN.IOU_NMS:
-		# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_IOU_NMS.json", 'w') as f:
-		# 			f.write(json.dumps(dict_all))
-		# 			print("In {} round, saved dict_all ".format(i))
-		# 	elif cfg.FAST_RCNN.SCORE_NMS:
-		# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_SCORE_NMS.json", 'w') as f:
-		# 			f.write(json.dumps(dict_all))
-		# 			print("In {} round, saved dict_all ".format(i))
+		# print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
+		# fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/after_nms_{}.png".format(im_name),
+		#             dpi = dpi)
+		# plt.close('all')
 		
-		# if cfg.TEST.IOU_OUT:
-		# 	gt_i = cached_roidb[i]['boxes']
-		# 	roi_to_final = predbox_roi_iou(dict_all[im_name]['rois'], np.array(gt_i, dtype = "float32"))
-		# 	dict_all[im_name]['final'] = roi_to_final.tolist()
-		# 	
-		# 	keep = np.array(dict_all[im_name]['keep'])
-		# 	dict_all[im_name]['shift'] = np.array(dict_all[im_name]['shift'], dtype = np.float32)[keep].tolist()
-		# 	dict_all[im_name]['final'] = np.array(dict_all[im_name]['final'], dtype = np.float32)[keep].tolist()
-		# 	
-		# 	if cfg.TEST.IOU_OUT_VIS:
-		# 		# 试着画出图像看一看
-		# 		dpi = 200
-		# 		
-		# 		fig = plt.figure(frameon = False)
-		# 		fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
-		# 		ax = plt.Axes(fig, [0., 0., 1., 1.])
-		# 		ax.axis('off')
-		# 		fig.add_axes(ax)
-		# 		ax.imshow(im)
-		# 		# 在im上添加gt
-		# 		for item in gt_i:
-		# 			ax.add_patch(
-		# 				plt.Rectangle((item[0], item[1]),
-		# 				              item[2] - item[0],
-		# 				              item[3] - item[1],
-		# 				              fill = False, edgecolor = 'r',
-		# 				              linewidth = 0.6, alpha = 1))
-		# 		
-		# 		# 在im上添加proposals
-		# 		cnt = 0
-		# 		for ind, item in enumerate(dict_all[im_name]['pred_boxes']):
-		# 			if dict_all[im_name]['rpn_score'][ind] > 0.8:
-		# 				cnt += 1
-		# 				ax.add_patch(
-		# 					plt.Rectangle((item[0], item[1]),
-		# 					              item[2] - item[0],
-		# 					              item[3] - item[1],
-		# 					              fill = False, edgecolor = 'g',
-		# 					              linewidth = 0.3, alpha = 1))
-		# 		
-		# 		print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
-		# 		fig.savefig("/nfs/project/libo_i/IOU.pytorch/im_out/{}.png".format(im_name), dpi = dpi)
-		# 		plt.close('all')
-		# 	
-		# 	dict_all[im_name].pop('rois')
-		# 	dict_all[im_name].pop('pred_boxes')
-		# 	dict_all[im_name].pop('keep')
-		# 	if i == 100:
-		# 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/rpn_only_score_nms.json", 'w') as f:
-		# 			f.write(json.dumps(dict_all))
-		# 			print("In {} round, saved dict_all ".format(i))
+		if i == 100:
+			if cfg.FAST_RCNN.IOU_NMS:
+				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_IOU_NMS.json", 'w') as f:
+					f.write(json.dumps(dict_all))
+					print("In {} round, saved dict_all ".format(i))
+			elif cfg.FAST_RCNN.SCORE_NMS:
+				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_SCORE_NMS.json", 'w') as f:
+					f.write(json.dumps(dict_all))
+					print("In {} round, saved dict_all ".format(i))
+		
+		if cfg.TEST.IOU_OUT:
+			gt_i = cached_roidb[i]['boxes']
+			roi_to_final = predbox_roi_iou(dict_all[im_name]['rois'], np.array(gt_i, dtype = "float32"))
+			dict_all[im_name]['final'] = roi_to_final.tolist()
+			
+			keep = np.array(dict_all[im_name]['keep'])
+			dict_all[im_name]['shift'] = np.array(dict_all[im_name]['shift'], dtype = np.float32)[keep].tolist()
+			dict_all[im_name]['final'] = np.array(dict_all[im_name]['final'], dtype = np.float32)[keep].tolist()
+			
+			if cfg.TEST.IOU_OUT_VIS:
+				# 试着画出图像看一看
+				dpi = 200
+				
+				fig = plt.figure(frameon = False)
+				fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
+				ax = plt.Axes(fig, [0., 0., 1., 1.])
+				ax.axis('off')
+				fig.add_axes(ax)
+				ax.imshow(im)
+				# 在im上添加gt
+				for item in gt_i:
+					ax.add_patch(
+						plt.Rectangle((item[0], item[1]),
+						              item[2] - item[0],
+						              item[3] - item[1],
+						              fill = False, edgecolor = 'r',
+						              linewidth = 0.6, alpha = 1))
+				
+				# 在im上添加proposals
+				cnt = 0
+				for ind, item in enumerate(dict_all[im_name]['pred_boxes']):
+					if dict_all[im_name]['rpn_score'][ind] > 0.8:
+						cnt += 1
+						ax.add_patch(
+							plt.Rectangle((item[0], item[1]),
+							              item[2] - item[0],
+							              item[3] - item[1],
+							              fill = False, edgecolor = 'g',
+							              linewidth = 0.3, alpha = 1))
+				
+				print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
+				fig.savefig("/nfs/project/libo_i/IOU.pytorch/im_out/{}.png".format(im_name), dpi = dpi)
+				plt.close('all')
+			
+			dict_all[im_name].pop('rois')
+			dict_all[im_name].pop('pred_boxes')
+			dict_all[im_name].pop('keep')
+			if i == 100:
+				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/rpn_only_score_nms.json", 'w') as f:
+					f.write(json.dumps(dict_all))
+					print("In {} round, saved dict_all ".format(i))
 		
 		extend_results(i, all_boxes, cls_boxes_i)
 		if cls_segms_i is not None:
