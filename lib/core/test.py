@@ -85,16 +85,28 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 			model, im, cfg.TEST.SCALE, cfg.TEST.MAX_SIZE, box_proposals, file_tag_path = im_name_tag)
 	timers['im_detect_bbox'].toc()
 	
+	dict_i = {}
+	path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
+	timers['misc_bbox'].tic()
+	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
+		
+		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
+			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
+		
+		with open(os.path.join(path, "stage1_pred_boxes.json"), "r") as f:
+			stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
+		
+		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'r') as f:
+			dets_cls = json.load(f)
+		
+		scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_pred_iou, dets_cls)
 	# score and boxes are from the whole image after score thresholding and nms
 	# (they are not separated by class) (numpy.ndarray)
 	# cls_boxes boxes and scores are separated by class and in the format used
 	# for evaluating results
-	timers['misc_bbox'].tic()
-	scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+	else:
+		scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
 	timers['misc_bbox'].toc()
-	
-	dict_i = {}
-	path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
 	
 	if cfg.TEST.IOU_OUT:
 		
@@ -118,38 +130,6 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		dict_i['rpn_score'] = rpn_score.tolist()
 		dict_i['pred_boxes'] = pred_boxes
 		dict_i['keep'] = keep
-	
-	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
-
-		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
-			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
-
-		with open(os.path.join(path, "stage1_pred_boxes.json"), "r") as f:
-			stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
-
-		with open(os.path.join(path, "stage2_pred_boxes.json"), "r") as f:
-			stage2_pred_boxes = np.array(json.load(f), dtype = "float32")
-
-		with open(os.path.join(path, "stage1_score.json"), "r") as f:
-			stage1_cls_score = np.array(json.load(f), dtype = "float32")
-
-		# 顾老师的NMS流程，不知道加不加上？
-		if cfg.FAST_RCNN.IOU_NMS:
-			bbox_with_score = np.hstack((stage1_pred_boxes, stage1_pred_iou[:, np.newaxis])).astype(np.float32,
-			                                                                                        copy = False)
-			keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
-			dict_i['keep'] = keep
-
-		elif cfg.FAST_RCNN.SCORE_NMS:
-			bbox_with_score = np.hstack((stage1_pred_boxes, stage1_cls_score[:, np.newaxis])).astype(np.float32,
-			                                                                                         copy = False)
-			keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
-			dict_i['keep'] = keep
-
-		dict_i['stage1_shift_iou'] = stage1_pred_iou.tolist()
-		dict_i['stage1_pred_boxes'] = stage1_pred_boxes.tolist()
-		dict_i['stage2_pred_boxes'] = stage2_pred_boxes.tolist()
-		dict_i['stage1_score'] = stage1_cls_score.tolist()
 	
 	if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
 		timers['im_detect_mask'].tic()
@@ -798,6 +778,53 @@ def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
 		hms_c[i] = heur_f(hms_to_combine)
 	
 	return hms_c
+
+
+def iou_box_nms_and_limit(stage1_box, stage1_iou, dets_cls):
+	num_classes = cfg.MODEL.NUM_CLASSES
+	cls_boxes = [[] for _ in range(num_classes)]
+	for j in range(1, num_classes):
+		inds = dets_cls[str(j)]
+		boxes_j = stage1_box[inds]
+		scores_j = stage1_iou[inds]
+		dets_j = np.hstack((boxes_j, scores_j[:, np.newaxis])).astype(np.float32, copy = False)
+		if cfg.TEST.SOFT_NMS.ENABLED:
+			nms_dets, _ = box_utils.soft_nms(
+				dets_j,
+				sigma = cfg.TEST.SOFT_NMS.SIGMA,
+				overlap_thresh = cfg.TEST.NMS,
+				score_thresh = 0.0001,
+				method = cfg.TEST.SOFT_NMS.METHOD
+			)
+		else:
+			keep = box_utils.nms(dets_j, cfg.TEST.NMS)
+			nms_dets = dets_j[keep, :]
+		
+		# Refine the post-NMS boxes using bounding-box voting
+		if cfg.TEST.BBOX_VOTE.ENABLED:
+			nms_dets = box_utils.box_voting(
+				nms_dets,
+				dets_j,
+				cfg.TEST.BBOX_VOTE.VOTE_TH,
+				scoring_method = cfg.TEST.BBOX_VOTE.SCORING_METHOD
+			)
+		cls_boxes[j] = nms_dets
+	
+	# Limit to max_per_image detections **over all classes**
+	if cfg.TEST.DETECTIONS_PER_IM > 0:
+		image_scores = np.hstack(
+			[cls_boxes[j][:, -1] for j in range(1, num_classes)]
+		)
+		if len(image_scores) > cfg.TEST.DETECTIONS_PER_IM:
+			image_thresh = np.sort(image_scores)[-cfg.TEST.DETECTIONS_PER_IM]
+			for j in range(1, num_classes):
+				keep = np.where(cls_boxes[j][:, -1] >= image_thresh)[0]
+				cls_boxes[j] = cls_boxes[j][keep, :]
+	
+	im_results = np.vstack([cls_boxes[j] for j in range(1, num_classes)])
+	boxes = im_results[:, :-1]
+	scores = im_results[:, -1]
+	return scores, boxes, cls_boxes
 
 
 def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch

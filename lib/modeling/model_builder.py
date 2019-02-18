@@ -281,13 +281,20 @@ class Generalized_RCNN(nn.Module):
 					
 					onecls_pred_boxes = []
 					onecls_score = []
+					dets_cls = {}
+					count = 0
 					for j in range(1, num_classes):
 						inds = np.where(cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
 						boxes_j = shift_boxes[inds, j * 4:(j + 1) * 4]
 						score_j = cls_score[inds, j]
 						onecls_pred_boxes += boxes_j.tolist()
 						onecls_score += score_j.tolist()
+						dets_cls.update({j:[]})
+						for k in range(len(boxes_j.tolist())):
+							dets_cls[j].append(count)
+							count += 1
 					
+					assert count == len(onecls_pred_boxes)
 					stage2_rois_score = np.array(onecls_score, dtype = np.float32)
 					stage2_rois = np.array(onecls_pred_boxes, dtype = np.float32)
 					
@@ -305,7 +312,7 @@ class Generalized_RCNN(nn.Module):
 						rois_lvl = stage2_rois[idx_lvl, :]
 						rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
 						rpn_ret['rois_fpn{}'.format(lvl)] = rois_lvl
-						print("Rois_FPN_{} has been replaced!".format(lvl))
+						# print("Rois_FPN_{} has been replaced!".format(lvl))
 					
 					rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy = False)
 					rpn_ret['rois_idx_restore_int32'] = rois_idx_restore
@@ -345,7 +352,6 @@ class Generalized_RCNN(nn.Module):
 							stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape((1, 4))
 							iou = box_utils.bbox_overlaps(stage1, stage2)
 							stage1_pred_iou.append(iou.squeeze().item())
-					
 					elif flag == "cross_product":
 						iou = box_utils.bbox_overlaps(stage2_rois, stage2_final_boxes)
 						stage1_pred_iou = iou.max(axis = 1)
@@ -358,11 +364,14 @@ class Generalized_RCNN(nn.Module):
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_boxes.json", 'w') as f:
 						json.dump(stage2_rois.tolist(), f)
 					
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
+						json.dump(stage1_pred_iou.tolist(), f)
+					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage2_pred_boxes.json", 'w') as f:
 						json.dump(stage2_final_boxes.tolist(), f)
 					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
-						json.dump(stage1_pred_iou, f)
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'w') as f:
+						json.dump(dets_cls, f)
 				
 				else:
 					im_scale = im_info.data.cpu().numpy().squeeze()[2]
