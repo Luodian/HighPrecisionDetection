@@ -50,8 +50,8 @@ import json
 import os
 
 import logging
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 
 
 def predbox_roi_iou(raw_roi, pred_box):
@@ -92,11 +92,10 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 	dict_i = {}
 	path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
 	timers['misc_bbox'].tic()
+	
 	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
-		
 		if im_name_tag == '000000008277':
 			logger.info("Found KKKKK")
-			
 		
 		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
 			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
@@ -114,13 +113,18 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		dict_i['shift_iou'] = stage1_pred_iou
 		dict_i['stage1_score'] = stage1_score
 		
+		cmp_scores, cmp_boxes, cmp_cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+		
 		scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_pred_iou, dets_cls)
+		
+		dict_i['final_pred'] = boxes
 	# score and boxes are from the whole image after score thresholding and nms
 	# (they are not separated by class) (numpy.ndarray)
 	# cls_boxes boxes and scores are separated by class and in the format used
 	# for evaluating results
 	else:
 		scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+	
 	timers['misc_bbox'].toc()
 	
 	if cfg.TEST.IOU_OUT:
@@ -131,20 +135,24 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		with open(os.path.join(path, "raw_roi.json"), "r") as f:
 			raw_roi = np.array(json.load(f), dtype = "float32")
 		
-		with open(os.path.join(path, "cls_score.json"), "r") as f:
+		with open(os.path.join(path, "rois_score.json"), "r") as f:
 			rpn_score = np.array(json.load(f), dtype = "float32")
+		
+		with open(os.path.join(path, "shifted_boxes_scores.json"), "r") as f:
+			pred_box_scores = np.array(json.load(f), dtype = "float32")
 		
 		roi_to_shift = predbox_roi_iou(raw_roi, pred_boxes)
 		
 		# 顾老师的NMS流程，不知道加不加上？
-		bbox_with_score = np.hstack((raw_roi, rpn_score[:, np.newaxis])).astype(np.float32, copy = False)
+		bbox_with_score = np.hstack((raw_roi, roi_to_shift[:, np.newaxis])).astype(np.float32, copy = False)
 		keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
 		
 		dict_i['rois'] = raw_roi
-		dict_i['shift'] = roi_to_shift.tolist()
-		dict_i['rpn_score'] = rpn_score.tolist()
+		dict_i['shift_iou'] = roi_to_shift.tolist()
+		dict_i['rois_score'] = rpn_score.tolist()
 		dict_i['pred_boxes'] = pred_boxes
 		dict_i['keep'] = keep
+		dict_i['pred_boxes_scores'] = pred_box_scores.tolist()
 	
 	if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
 		timers['im_detect_mask'].tic()
@@ -799,8 +807,11 @@ def iou_box_nms_and_limit(stage1_box, stage1_iou, dets_cls):
 	num_classes = cfg.MODEL.NUM_CLASSES
 	cls_boxes = [[] for _ in range(num_classes)]
 	for j in range(1, num_classes):
-		inds = dets_cls[str(j)]
-		boxes_j = stage1_box[inds]
+		inds = np.array(dets_cls[str(j)], dtype = np.int)
+		if not inds.tolist():
+			boxes_j = np.empty((0, 4), dtype = np.float32)
+		else:
+			boxes_j = stage1_box[inds]
 		scores_j = stage1_iou[inds]
 		dets_j = np.hstack((boxes_j, scores_j[:, np.newaxis])).astype(np.float32, copy = False)
 		if cfg.TEST.SOFT_NMS.ENABLED:
@@ -903,8 +914,14 @@ def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch
 	scores = im_results[:, -1]
 	if cfg.TEST.IOU_OUT:
 		path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
+		# Leave high score pred_boxes
+		inds = np.where(scores > 0.5)[0]
+		out_boxes = boxes[inds]
+		out_scores = scores[inds]
 		with open(os.path.join(path, "shifted_boxes.json"), 'w') as f:
-			json.dump(boxes.tolist(), f)
+			json.dump(out_boxes.tolist(), f)
+		with open(os.path.join(path, "shifted_boxes_scores.json"), 'w') as f:
+			json.dump(out_scores.tolist(), f)
 	
 	return scores, boxes, cls_boxes
 

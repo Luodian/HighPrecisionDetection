@@ -20,10 +20,10 @@ def predbox_roi_iou(raw_roi, pred_box):
 
 def precision_recall(gt, pred, thrs, flag):
 	print("PR of gt_iou and {}".format(flag))
+	ind = np.where(np.array(pred, dtype = np.float32) > thrs)[0]
+	y_pred = gt[ind]
 	for score in range(0, 10):
 		score = score * 0.1
-		ind = np.where(np.array(pred, dtype = np.float32) > thrs)[0]
-		y_pred = gt[ind]
 		y_right = np.where(y_pred > score)[0]
 		print("Thresh {:.1f}: right {} pred {} precison {:.2f}".format(score, len(y_right), len(y_pred),
 		                                                               len(y_right) * 1. / len(y_pred)))
@@ -45,7 +45,7 @@ def BIG(method):
 		final_i = dict_all[item]['final_iou']
 		total_final_iou.extend(final_i)
 		
-		score_i = dict_all[item]['stage1_score']
+		score_i = dict_all[item]['rois_score']
 		
 		total_score.extend(score_i)
 	
@@ -74,7 +74,7 @@ for item in dict_all:
 	final_i = dict_all[item]['final_iou']
 	total_final_iou.extend(final_i)
 	
-	score_i = dict_all[item]['stage1_score']
+	score_i = dict_all[item]['rois_score']
 	
 	total_score.extend(score_i)
 	
