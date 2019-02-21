@@ -376,7 +376,7 @@ class fpn_rpn_outputs(nn.Module):
 		}
 		return mapping_to_detectron, []
 	
-	def forward(self, blobs_in, im_info, roidb = None):
+	def forward(self, blobs_in, im_info, roidb = None, tag = None, alter_rpn_input = None):
 		k_max = cfg.FPN.RPN_MAX_LEVEL  # coarsest level of pyramid
 		k_min = cfg.FPN.RPN_MIN_LEVEL  # finest level of pyramid
 		assert len(blobs_in) == k_max - k_min + 1
@@ -407,8 +407,14 @@ class fpn_rpn_outputs(nn.Module):
 				else:  # sigmoid
 					fpn_rpn_cls_probs = F.sigmoid(fpn_rpn_cls_score)
 				
-				fpn_rpn_rois, fpn_rpn_roi_probs = self.GenerateProposals_modules[lvl - k_min](
-					fpn_rpn_cls_probs, fpn_rpn_bbox_pred, im_info)
+				# Added supplementary rois and scores in second stage FPN.
+				if tag:
+					fpn_rpn_rois = alter_rpn_input['rpn_rois_fpn' + slvl]
+					fpn_rpn_roi_probs = alter_rpn_input['rpn_rois_prob_fpn' + slvl]
+				else:
+					fpn_rpn_rois, fpn_rpn_roi_probs = self.GenerateProposals_modules[lvl - k_min](
+						fpn_rpn_cls_probs, fpn_rpn_bbox_pred, im_info)
+				
 				rois_blobs.append(fpn_rpn_rois)
 				score_blobs.append(fpn_rpn_roi_probs)
 				return_dict['rpn_rois_fpn' + slvl] = fpn_rpn_rois
