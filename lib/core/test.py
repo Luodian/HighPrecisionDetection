@@ -94,14 +94,14 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 	timers['misc_bbox'].tic()
 	
 	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
-		if im_name_tag == '000000008277':
-			logger.info("Found KKKKK")
-		
 		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
 			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
 		
 		with open(os.path.join(path, "stage1_pred_boxes.json"), "r") as f:
 			stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
+		
+		with open(os.path.join(path, "stage2_pred_boxes.json"), "r") as f:
+			stage2_pred_boxes = np.array(json.load(f), dtype = "float32")
 		
 		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'r') as f:
 			dets_cls = json.load(f)
@@ -112,8 +112,7 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		dict_i['stage1_out'] = stage1_pred_boxes
 		dict_i['shift_iou'] = stage1_pred_iou
 		dict_i['stage1_score'] = stage1_score
-		
-		cmp_scores, cmp_boxes, cmp_cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+		dict_i['stage2_out'] = stage2_pred_boxes
 		
 		scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_pred_iou, dets_cls)
 		
@@ -144,7 +143,11 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		roi_to_shift = predbox_roi_iou(raw_roi, pred_boxes)
 		
 		# 顾老师的NMS流程，不知道加不加上？
-		bbox_with_score = np.hstack((raw_roi, roi_to_shift[:, np.newaxis])).astype(np.float32, copy = False)
+		if cfg.FAST_RCNN.IOU_NMS:
+			bbox_with_score = np.hstack((raw_roi, roi_to_shift[:, np.newaxis])).astype(np.float32, copy = False)
+		else:
+			bbox_with_score = np.hstack((raw_roi, rpn_score[:, np.newaxis])).astype(np.float32, copy = False)
+		
 		keep = box_utils.nms(bbox_with_score, cfg.TEST.NMS)
 		
 		dict_i['rois'] = raw_roi
@@ -915,7 +918,7 @@ def box_results_with_nms_and_limit(scores, boxes):  # NOTE: support single-batch
 	if cfg.TEST.IOU_OUT:
 		path = "/nfs/project/libo_i/IOU.pytorch/IOU_Validation"
 		# Leave high score pred_boxes
-		inds = np.where(scores > 0.5)[0]
+		inds = np.where(scores > 0.1)[0]
 		out_boxes = boxes[inds]
 		out_scores = scores[inds]
 		with open(os.path.join(path, "shifted_boxes.json"), 'w') as f:

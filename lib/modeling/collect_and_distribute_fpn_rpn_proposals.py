@@ -86,14 +86,6 @@ def collect(inputs, is_training):
 	scores = np.concatenate(score_inputs).squeeze()
 	inds = np.argsort(-scores)[:post_nms_topN]
 	rois = rois[inds, :]
-	if cfg.TEST.IOU_OUT:
-		score_2_json = []
-		ret_scores = scores[inds]
-		for item in ret_scores:
-			score_2_json.append(item.item())
-		
-		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/rois_score.json", 'w') as f:
-			json.dump(score_2_json, f)
 	
 	return rois
 

@@ -36,7 +36,7 @@ def stats_on_iou_vertical(iou_vertical, method):
 		score = score * 0.1
 		y_right = np.where(np.array(iou_vertical, dtype = np.float32) > score)[0]
 		print("Thresh {:.1f}: right {} pred {} recall {:.2f}".format(score, len(y_right), len(iou_vertical),
-		                                                               len(y_right) * 1. / len(iou_vertical)))
+		                                                             len(y_right) * 1. / len(iou_vertical)))
 	
 	print("\n")
 
@@ -73,8 +73,6 @@ with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method
 total_shift_iou = []
 total_final_iou = []
 total_score = []
-iou_final_vertical = []
-score_final_vertical = []
 
 for item in dict_all:
 	shift_i = dict_all[item]['shift_iou']
@@ -83,15 +81,9 @@ for item in dict_all:
 	final_i = dict_all[item]['final_iou']
 	total_final_iou.extend(final_i)
 	
-	score_i = dict_all[item]['rois_score']
+	score_i = dict_all[item]['stage1_score']
 	
 	total_score.extend(score_i)
-	
-	iou_vertical_i = dict_all[item]['iou_final_vertical']
-	iou_final_vertical.extend(iou_vertical_i)
-	
-	score_vertical_i = dict_all[item]['score_final_vertical']
-	score_final_vertical.extend(score_vertical_i)
 	
 	assert len(shift_i) == len(final_i) == len(score_i)
 	print("Length = {}".format(len(shift_i)))
@@ -99,9 +91,6 @@ for item in dict_all:
 precision_recall(np.array(total_final_iou), total_shift_iou, 0.3, "IOU")
 
 precision_recall(np.array(total_final_iou), total_score, 0.8, "SCORE")
-
-stats_on_iou_vertical(iou_final_vertical, "IOU")
-stats_on_iou_vertical(score_final_vertical, "SCORE")
 
 gt_iou_above_ths = []
 shift_iou_above_ths = []

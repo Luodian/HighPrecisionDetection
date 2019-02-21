@@ -310,48 +310,26 @@ def test_net(
 						plt.Rectangle((item[0], item[1]),
 						              item[2] - item[0],
 						              item[3] - item[1],
-						              fill = False, edgecolor = 'r',
+						              fill = True, edgecolor = 'r',
 						              linewidth = 0.3, alpha = 1))
 				
 				# 在im上添加proposals
-				cnt = 0
-				length = len(dict_all[im_name]['final_pred'])
+				length = len(dict_all[im_name]['stage2_out'])
 				for ind in range(length):
 					# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
-					stage1_item = dict_all[im_name]['final_pred'][ind]
-					cnt += 1
+					stage1_item = dict_all[im_name]['stage2_out'][ind]
 					ax.add_patch(
 						plt.Rectangle((stage1_item[0], stage1_item[1]),
 						              stage1_item[2] - stage1_item[0],
 						              stage1_item[3] - stage1_item[1],
 						              fill = False, edgecolor = 'g',
-						              linewidth = 0.3, alpha = 1))
+						              linewidth = 0.5, alpha = 1))
 				
-				for ind in range(5):
-					stage1_item = dict_all[im_name]['final_pred'][ind]
-					ax.text(
-						stage1_item[0], stage1_item[1] - 2,
-						str(round(dict_all[im_name]['shift_iou'][ind], 2)),
-						fontsize = 4,
-						family = 'serif',
-						bbox = dict(
-							facecolor = 'g', alpha = 1, pad = 0, edgecolor = 'none'),
-						color = 'white')
-					
-					ax.text(
-						stage1_item[0], stage1_item[1] - 10,
-						str(round(dict_all[im_name]['stage1_score'][ind], 2)),
-						fontsize = 4,
-						family = 'serif',
-						bbox = dict(
-							facecolor = 'r', alpha = 1, pad = 0, edgecolor = 'none'),
-						color = 'white')
-				
-				print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
 				fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/{}.png".format(im_name), dpi = dpi)
 				plt.close('all')
 			
 			dict_all[im_name].pop('stage1_out')
+			dict_all[im_name].pop('stage2_out')
 			dict_all[im_name].pop('final_pred')
 		#
 		# # Draw stage1 pred_boxes onto im and gt
@@ -391,25 +369,36 @@ def test_net(
 		# plt.close('all')
 		if cfg.TEST.IOU_OUT:
 			gt_i = cached_roidb[i]['boxes']
-			roi_to_final = predbox_roi_iou(dict_all[im_name]['rois'], np.array(gt_i, dtype = "float32"))
-			dict_all[im_name]['final_iou'] = roi_to_final.tolist()
 			
+			# NMS
 			keep = np.array(dict_all[im_name]['keep'])
+			
 			dict_all[im_name]['shift_iou'] = np.array(dict_all[im_name]['shift_iou'], dtype = np.float32)[
-				keep].tolist()
-			dict_all[im_name]['final_iou'] = np.array(dict_all[im_name]['final_iou'], dtype = np.float32)[
 				keep].tolist()
 			dict_all[im_name]['rois_score'] = np.array(dict_all[im_name]['rois_score'], dtype = np.float32)[
 				keep].tolist()
-			
 			dict_all[im_name]['rois'] = np.array(dict_all[im_name]['rois'], dtype = np.float32)[keep].tolist()
-			
 			pred_boxes_scores = dict_all[im_name]['pred_boxes_scores']
+			
+			# Thresh filter
+			iou_thrsh_keep = np.where(np.array(dict_all[im_name]['shift_iou'], dtype = np.float32) >= 0.1)[0]
+			score_thrsh_keep = np.where(np.array(dict_all[im_name]['rois_score'], dtype = np.float32) >= 0.8)[0]
+			
+			iou_rois = np.array(dict_all[im_name]['rois'], dtype = np.float32)[iou_thrsh_keep]
+			score_rois = np.array(dict_all[im_name]['rois'], dtype = np.float32)[score_thrsh_keep]
+			
+			roi_to_final = predbox_roi_iou(np.array(dict_all[im_name]['rois'], dtype = np.float32),
+			                               np.array(gt_i, dtype = "float32"))
+			iou_final_to_rois = predbox_roi_iou(np.array(gt_i, dtype = "float32"), iou_rois)
+			score_final_to_rois = predbox_roi_iou(np.array(gt_i, dtype = "float32"), score_rois)
+			
+			dict_all[im_name]['final_iou'] = roi_to_final.tolist()
+			dict_all[im_name]['iou_final_vertical'] = iou_final_to_rois.tolist()
+			dict_all[im_name]['score_final_vertical'] = score_final_to_rois.tolist()
 			
 			if cfg.TEST.IOU_OUT_VIS:
 				# 试着画出图像看一看
 				dpi = 200
-				
 				fig = plt.figure(frameon = False)
 				fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
 				ax = plt.Axes(fig, [0., 0., 1., 1.])
@@ -474,9 +463,15 @@ def test_net(
 			dict_all[im_name].pop('keep')
 		
 		if i == 100:
-			with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/FPN_IOU_NMS.json", 'w') as f:
+			method = "IOU_Exp"
+			if cfg.FAST_RCNN.IOU_NMS:
+				method = "FPN_IOU_NMS"
+			elif cfg.FAST_RCNN.SCORE_NMS:
+				method = "FPN_SCORE_NMS"
+			with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method), 'w') as f:
 				f.write(json.dumps(dict_all))
 				print("In {} round, saved dict_all ".format(i))
+				exit(0)
 		extend_results(i, all_boxes, cls_boxes_i)
 		if cls_segms_i is not None:
 			extend_results(i, all_segms, cls_segms_i)
