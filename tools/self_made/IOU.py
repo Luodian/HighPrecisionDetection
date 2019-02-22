@@ -36,7 +36,7 @@ def stats_on_iou_vertical(iou_vertical, method):
 		score = score * 0.1
 		y_right = np.where(np.array(iou_vertical, dtype = np.float32) > score)[0]
 		print("Thresh {:.1f}: right {} pred {} recall {:.2f}".format(score, len(y_right), len(iou_vertical),
-		                                                               len(y_right) * 1. / len(iou_vertical)))
+		                                                             len(y_right) * 1. / len(iou_vertical)))
 	
 	print("\n")
 
@@ -66,7 +66,7 @@ def BIG(method):
 	                 np.array(total_score), 0.5, "SCORE")
 
 
-method = "FPN_SCORE_NMS"
+method = "FPN_IOU_NMS"
 with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
 

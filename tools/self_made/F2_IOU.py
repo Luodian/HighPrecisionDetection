@@ -66,7 +66,7 @@ def BIG(method):
 	                 np.array(total_score), 0.5, "SCORE")
 
 
-method = "FPN_SCORE_NMS"
+method = "FPN_IOU_NMS"
 with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method)) as f:
 	dict_all = json.load(f)
 
@@ -86,11 +86,10 @@ for item in dict_all:
 	total_score.extend(score_i)
 	
 	assert len(shift_i) == len(final_i) == len(score_i)
-	print("Length = {}".format(len(shift_i)))
 
-precision_recall(np.array(total_final_iou), total_shift_iou, 0.3, "IOU")
+precision_recall(np.array(total_final_iou), total_shift_iou, 0, "IOU")
 
-precision_recall(np.array(total_final_iou), total_score, 0.8, "SCORE")
+precision_recall(np.array(total_final_iou), total_score, 0, "SCORE")
 
 gt_iou_above_ths = []
 shift_iou_above_ths = []

@@ -109,20 +109,33 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 		with open(os.path.join(path, "stage1_score.json"), "r") as f:
 			stage1_score = json.load(f)
 		
+		with open(os.path.join(path, "stage2_score.json"), "r") as f:
+			stage2_score = json.load(f)
+		
 		dict_i['stage1_out'] = stage1_pred_boxes
 		dict_i['shift_iou'] = stage1_pred_iou
 		dict_i['stage1_score'] = stage1_score
+		dict_i['stage2_score'] = stage2_score
 		dict_i['stage2_out'] = stage2_pred_boxes
 		
-		scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_pred_iou, dets_cls)
+		stage1_score = np.array(stage1_score, dtype = np.float32)
+		if cfg.FAST_RCNN.IOU_NMS:
+			scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_pred_iou, dets_cls,
+			                                                 stage1_score)
+		elif cfg.FAST_RCNN.SCORE_NMS:
+			scores, boxes, cls_boxes = iou_box_nms_and_limit(stage1_pred_boxes, stage1_score, dets_cls, stage1_score)
 		
-		dict_i['final_pred'] = boxes
+		logger.info("Length of inds is {}".format(boxes.shape[0]))
+		dict_i['boxes'] = boxes
+		dict_i['score'] = scores
+	
 	# score and boxes are from the whole image after score thresholding and nms
 	# (they are not separated by class) (numpy.ndarray)
 	# cls_boxes boxes and scores are separated by class and in the format used
 	# for evaluating results
 	else:
 		scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+		logger.info("Length of inds is {}".format(boxes.shape[0]))
 	
 	timers['misc_bbox'].toc()
 	
@@ -806,7 +819,7 @@ def combine_heatmaps_size_dep(hms_ts, ds_ts, us_ts, boxes, heur_f):
 	return hms_c
 
 
-def iou_box_nms_and_limit(stage1_box, stage1_iou, dets_cls):
+def iou_box_nms_and_limit(stage1_box, stage1_iou, dets_cls, scores):
 	num_classes = cfg.MODEL.NUM_CLASSES
 	cls_boxes = [[] for _ in range(num_classes)]
 	for j in range(1, num_classes):
@@ -815,8 +828,9 @@ def iou_box_nms_and_limit(stage1_box, stage1_iou, dets_cls):
 			boxes_j = np.empty((0, 4), dtype = np.float32)
 		else:
 			boxes_j = stage1_box[inds]
-		scores_j = stage1_iou[inds]
-		dets_j = np.hstack((boxes_j, scores_j[:, np.newaxis])).astype(np.float32, copy = False)
+		iou_j = stage1_iou[inds]
+		score_j = scores[inds]
+		dets_j = np.hstack((boxes_j, iou_j[:, np.newaxis])).astype(np.float32, copy = False)
 		if cfg.TEST.SOFT_NMS.ENABLED:
 			nms_dets, _ = box_utils.soft_nms(
 				dets_j,
@@ -827,7 +841,9 @@ def iou_box_nms_and_limit(stage1_box, stage1_iou, dets_cls):
 			)
 		else:
 			keep = box_utils.nms(dets_j, cfg.TEST.NMS)
-			nms_dets = dets_j[keep, :]
+			boxes_j = boxes_j[keep]
+			score_j = score_j[keep]
+			nms_dets = np.hstack((boxes_j, score_j[:, np.newaxis])).astype(np.float32, copy = False)
 		
 		# Refine the post-NMS boxes using bounding-box voting
 		if cfg.TEST.BBOX_VOTE.ENABLED:

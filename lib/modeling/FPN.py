@@ -409,7 +409,7 @@ class fpn_rpn_outputs(nn.Module):
 				
 				# Added supplementary rois and scores in second stage FPN.
 				if tag:
-					fpn_rpn_rois = alter_rpn_input['rpn_rois_fpn' + slvl]
+					fpn_rpn_rois = alter_rpn_input['rois_fpn' + slvl]
 					fpn_rpn_roi_probs = alter_rpn_input['rpn_rois_prob_fpn' + slvl]
 				else:
 					fpn_rpn_rois, fpn_rpn_roi_probs = self.GenerateProposals_modules[lvl - k_min](

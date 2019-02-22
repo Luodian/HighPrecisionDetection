@@ -21,6 +21,7 @@ import utils.resnet_weights_helper as resnet_utils
 import utils.boxes as box_utils
 import utils.fpn as fpn_utils
 import numpy as np
+import copy
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,7 @@ class Generalized_RCNN(nn.Module):
 		#     # can be used to infer fg/bg ratio
 		#     return_dict['rois_label'] = rpn_ret['labels_int32']
 		
+		rois_certification = False
 		if cfg.FPN.FPN_ON:
 			# Retain only the blobs that will be used for RoI heads. `blob_conv` may include
 			# extra blobs that are used for RPN proposals, but not for RoI heads.
@@ -173,6 +175,29 @@ class Generalized_RCNN(nn.Module):
 		
 		if not self.training:
 			return_dict['blob_conv'] = blob_conv
+		
+		if rois_certification:
+			lvl_min = cfg.FPN.ROI_MIN_LEVEL
+			lvl_max = cfg.FPN.ROI_MAX_LEVEL
+			test_rpn_ret = {'rois':rpn_ret['rois']}
+			lvls = fpn_utils.map_rois_to_fpn_levels(test_rpn_ret['rois'], lvl_min, lvl_max)
+			rois_idx_order = np.empty((0,))
+			test_rois = test_rpn_ret['rois']
+			
+			for output_idx, lvl in enumerate(range(lvl_min, lvl_max + 1)):
+				idx_lvl = np.where(lvls == lvl)[0]
+				rois_lvl = test_rois[idx_lvl, :]
+				rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
+				test_rpn_ret['rois_fpn{}'.format(lvl)] = rois_lvl
+			
+			rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy = False)
+			test_rpn_ret['rois_idx_restore_int32'] = rois_idx_restore
+			
+			test_feat = self.Box_Head(blob_conv, test_rpn_ret)
+			test_cls_score, test_bbox_pred = self.Box_Outs(test_feat)
+			
+			test_cls_score = test_cls_score.data.cpu().numpy().squeeze()
+			test_bbox_pred = test_bbox_pred.data.cpu().numpy().squeeze()
 		
 		if not cfg.MODEL.RPN_ONLY:
 			if cfg.MODEL.SHARE_RES5 and self.training:
@@ -269,42 +294,10 @@ class Generalized_RCNN(nn.Module):
 						json.dump(score_2_json, f)
 			
 			# 开始第二个fast_head阶段，首先通过rois和bbox_delta计算pred_box
-			rois_certification = True
 			if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
 				lvl_min = cfg.FPN.ROI_MIN_LEVEL
 				lvl_max = cfg.FPN.ROI_MAX_LEVEL
 				if cfg.FPN.FPN_ON:
-					# 做一个关于fpn分配机制的验证实验，这里对1000个rois进行分配
-					if rois_certification:
-						import copy
-						alter_rpn = copy.deepcopy(rpn_ret)
-						unresized_rois = alter_rpn['rois']
-						lvls = fpn_utils.map_rois_to_fpn_levels(unresized_rois, lvl_min, lvl_max)
-						# TAG: We might need to visualize "stage2_rois" to make sure.
-						rois_idx_order = np.empty((0,))
-						dummy_batch = np.zeros((unresized_rois.shape[0], 1), dtype = np.float32)
-						alter_rpn["rois"] = np.hstack((dummy_batch, unresized_rois)).astype(np.float32, copy = False)
-						
-						for output_idx, lvl in enumerate(range(lvl_min, lvl_max + 1)):
-							idx_lvl = np.where(lvls == lvl)[0]
-							rois_lvl = unresized_rois[idx_lvl, :]
-							rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
-							_ = np.zeros((rois_lvl.shape[0], 1), dtype = np.float32)
-							alter_rpn['rois_fpn{}'.format(lvl)] = np.hstack((_, rois_lvl)).astype(np.float32,
-							                                                                    copy = False)
-						# print("Rois_FPN_{} has been replaced!".format(lvl))
-						
-						rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy = False)
-						alter_rpn['rois_idx_restore_int32'] = rois_idx_restore
-						# Go through 2nd stage of FPN and fast_head
-						box_feat = self.Box_Head(blob_conv, alter_rpn)
-						alter_cls_score, alter_bbox_pred = self.Box_Outs(box_feat)
-						
-						# Transform shift value to original one to get final pred boxes coordinates
-						alter_bbox_pred = alter_bbox_pred.data.cpu().numpy().squeeze()
-						alter_cls_score = alter_cls_score.data.cpu().numpy().squeeze()
-						
-						
 					im_scale = im_info.data.cpu().numpy().squeeze()[2]
 					rois = rpn_ret['rois'][:, 1:5] / im_scale
 					bbox_pred = bbox_pred.data.cpu().numpy().squeeze()
@@ -334,35 +327,43 @@ class Generalized_RCNN(nn.Module):
 					
 					# Redistribute stage2_rois using fpn_utils module provided functions
 					# calculate by formula
-					if stage2_rois.tolist() == []:
-						stage1_pred_iou = []
+					cls_tracker = {}
+					if not stage2_rois.tolist():
+						stage1_pred_iou = stage2_rois_score.tolist()
 						stage2_final_boxes = np.empty((0,))
+						stage2_final_score = np.empty((0,))
+						
 						logger.info("Detections above threshold is null.")
 					else:
+						alter_rpn = {}
 						unresize_stage2_rois = stage2_rois * im_scale
+						# unresize_stage2_rois = np.concatenate((unresize_stage2_rois, unresized_rois[:, 1:5]))
+						
 						lvls = fpn_utils.map_rois_to_fpn_levels(unresize_stage2_rois, lvl_min, lvl_max)
 						# TAG: We might need to visualize "stage2_rois" to make sure.
 						rois_idx_order = np.empty((0,))
-						dummy_batch = np.zeros((stage2_rois.shape[0], 1), dtype = np.float32)
-						rpn_ret["rois"] = np.hstack((dummy_batch, stage2_rois)).astype(np.float32, copy = False)
+						dummy_batch = np.zeros((unresize_stage2_rois.shape[0], 1), dtype = np.float32)
+						alter_rpn["rois"] = np.hstack((dummy_batch, unresize_stage2_rois)).astype(np.float32,
+						                                                                          copy = False)
+						# alter_rpn['rois'] = np.concatenate((alter_rpn['rois'], unresized_rois))
+						
 						for output_idx, lvl in enumerate(range(lvl_min, lvl_max + 1)):
 							idx_lvl = np.where(lvls == lvl)[0]
-							rois_lvl = stage2_rois[idx_lvl, :]
+							rois_lvl = unresize_stage2_rois[idx_lvl, :]
 							rois_idx_order = np.concatenate((rois_idx_order, idx_lvl))
 							_ = np.zeros((rois_lvl.shape[0], 1), dtype = np.float32)
-							rpn_ret['rois_fpn{}'.format(lvl)] = np.hstack((_, rois_lvl)).astype(np.float32,
-							                                                                    copy = False)
-						# print("Rois_FPN_{} has been replaced!".format(lvl))
+							alter_rpn['rois_fpn{}'.format(lvl)] = np.hstack((_, rois_lvl)).astype(np.float32,
+							                                                                      copy = False)
 						
 						rois_idx_restore = np.argsort(rois_idx_order).astype(np.int32, copy = False)
-						rpn_ret['rois_idx_restore_int32'] = rois_idx_restore
+						alter_rpn['rois_idx_restore_int32'] = rois_idx_restore
 						# Go through 2nd stage of FPN and fast_head
-						stage2_feat = self.Box_Head(blob_conv, rpn_ret)
+						stage2_feat = self.Box_Head(blob_conv, alter_rpn)
 						stage2_cls_score, stage2_bbox_pred = self.Box_Outs(stage2_feat)
 						
 						# Transform shift value to original one to get final pred boxes coordinates
 						stage2_bbox_pred = stage2_bbox_pred.data.cpu().numpy().squeeze()
-						stage2_cls_score = stage2_cls_score.data.cpu().numpy().squeeze()
+						stage2_cls_score = stage2_cls_score.data.cpu().numpy()
 						
 						stage2_box_deltas = stage2_bbox_pred.reshape([-1, bbox_pred.shape[-1]])
 						# Add some variance to box delta
@@ -378,51 +379,79 @@ class Generalized_RCNN(nn.Module):
 						                                            im_info.data.cpu().numpy().squeeze()[0:2])
 						onecls_pred_boxes = []
 						onecls_score = []
-						for j in range(0, num_classes):
+						count = 0
+						for j in range(1, num_classes):
 							inds = np.where(stage2_cls_score[:, j] > cfg.TEST.SCORE_THRESH)[0]
 							boxes_j = stage2_cls_out[inds, j * 4:(j + 1) * 4]
 							score_j = stage2_cls_score[inds, j]
-							dets_j = np.hstack((boxes_j, score_j[:, np.newaxis])).astype(
-								np.float32,
-								copy =
-								False)
+							dets_j = np.hstack((boxes_j, score_j[:, np.newaxis])).astype(np.float32, copy = False)
 							keep = box_utils.nms(dets_j, cfg.TEST.NMS)
 							boxes_j = boxes_j[keep]
 							score_j = score_j[keep]
-							
+							# 用于记录每个框属于第几类
 							onecls_score += score_j.tolist()
 							onecls_pred_boxes += boxes_j.tolist()
+							
+							for k in range(len(score_j)):
+								cls_tracker.update({count:j})
+								count += 1
 						
+						assert count == len(onecls_score)
 						stage2_final_boxes = np.array(onecls_pred_boxes, dtype = np.float32)
 						stage2_final_score = np.array(onecls_score, dtype = np.float32)
 						inds = np.where(stage2_final_score > 0.3)[0]
 						
 						# Filtered by keep index...
+						preserve_stage2_final_boxes = copy.deepcopy(stage2_final_boxes)
+						preserve_stage2_final_score = copy.deepcopy(stage2_final_score)
 						stage2_final_boxes = stage2_final_boxes[inds]
+						stage2_final_score = stage2_final_score[inds]
 						
-						# Restore stage2_pred_boxes to match the index with stage2_rois, Compute IOU between
-						# final_boxes and stage2_rois, one by one
-						flag = "cross_product"
-						if flag == "element_wise":
-							if stage2_final_boxes.shape[0] == stage2_rois.shape[0]:
-								restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
-								stage1_pred_iou = []
-								for ind, item in enumerate(stage2_rois):
-									stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
-									stage2 = np.array(restored_stage2_final_boxes[ind], dtype = np.float32).reshape(
-										(1, 4))
-									iou = box_utils.bbox_overlaps(stage1, stage2)
-									stage1_pred_iou.append(iou.squeeze().item())
-							else:
-								logger.info("Mistake while processing {}".format(str(im_info)))
-						elif flag == "cross_product":
-							iou = box_utils.bbox_overlaps(stage2_rois, stage2_final_boxes)
-							stage1_pred_iou = iou.max(axis = 1).tolist()
+						# if nothing left after 0.3 threshold filter, reserve whole boxes to original.
+						if stage2_final_boxes.size == 0:
+							lower_inds = np.where(preserve_stage2_final_score > 0.1)[0]
+							stage2_final_boxes = preserve_stage2_final_boxes[lower_inds]
+							stage2_final_score = preserve_stage2_final_score[lower_inds]
+						
+						else:
+							del preserve_stage2_final_boxes
+							del preserve_stage2_final_score
+						
+						# if all boxes are clsfied into bg class.
+						if stage2_final_boxes.size == 0:
+							stage1_pred_iou = stage2_rois_score.tolist()
+							stage2_final_boxes = np.empty((0,))
+							stage2_final_score = np.empty((0,))
+							logger.info("Detections above threshold is null.")
+						
+						else:
+							# Restore stage2_pred_boxes to match the index with stage2_rois, Compute IOU between
+							# final_boxes and stage2_rois, one by one
+							flag = "cross_product"
+							if flag == "element_wise":
+								if stage2_final_boxes.shape[0] == stage2_rois.shape[0]:
+									restored_stage2_final_boxes = stage2_final_boxes[rois_idx_restore]
+									stage1_pred_iou = []
+									for ind, item in enumerate(stage2_rois):
+										stage1 = np.array(item, dtype = np.float32).reshape((1, 4))
+										stage2 = np.array(restored_stage2_final_boxes[ind], dtype =
+										np.float32).reshape(
+											(1, 4))
+										iou = box_utils.bbox_overlaps(stage1, stage2)
+										stage1_pred_iou.append(iou.squeeze().item())
+								else:
+									logger.info("Mistake while processing {}".format(str(im_info)))
+							elif flag == "cross_product":
+								iou = box_utils.bbox_overlaps(stage2_rois, stage2_final_boxes)
+								stage1_pred_iou = iou.max(axis = 1).tolist()
 					
 					# stage1_pred is another name of stage2_rois
 					assert len(stage1_pred_iou) == len(stage2_rois)
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_score.json", "w") as f:
 						json.dump(stage2_rois_score.tolist(), f)
+					
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage2_score.json", "w") as f:
+						json.dump(stage2_final_score.tolist(), f)
 					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_boxes.json", 'w') as f:
 						json.dump(stage2_rois.tolist(), f)
@@ -435,6 +464,9 @@ class Generalized_RCNN(nn.Module):
 					
 					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'w') as f:
 						json.dump(dets_cls, f)
+					
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/cls_tracker.json", 'w') as f:
+						json.dump(cls_tracker, f)
 				
 				else:
 					im_scale = im_info.data.cpu().numpy().squeeze()[2]

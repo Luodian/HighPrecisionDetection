@@ -295,7 +295,11 @@ def test_net(
 			dict_all[im_name]['final_iou'] = shift_gt_iou.tolist()
 			dict_all[im_name]['shift_iou'] = dict_all[im_name]['shift_iou'].tolist()
 			
-			if cfg.FAST_RCNN.FAST_HEAD2_DEBUG_VIS:
+			if cfg.FAST_RCNN.FAST_HEAD2_DEBUG_VIS and i < 100:
+				
+				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/cls_tracker.json", 'r') as f:
+					cls_tracker = json.load(f)
+				
 				# Draw stage1 pred_boxes onto im and gt
 				dpi = 200
 				fig = plt.figure(frameon = False)
@@ -310,27 +314,48 @@ def test_net(
 						plt.Rectangle((item[0], item[1]),
 						              item[2] - item[0],
 						              item[3] - item[1],
-						              fill = True, edgecolor = 'r',
+						              fill = False, edgecolor = 'r',
 						              linewidth = 0.3, alpha = 1))
 				
 				# 在im上添加proposals
-				length = len(dict_all[im_name]['stage2_out'])
+				length = len(dict_all[im_name]['boxes'])
 				for ind in range(length):
 					# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
-					stage1_item = dict_all[im_name]['stage2_out'][ind]
+					stage1_item = dict_all[im_name]['boxes'][ind]
+					score_item = dict_all[im_name]['score'][ind]
+					score_item = round(score_item, 2)
 					ax.add_patch(
 						plt.Rectangle((stage1_item[0], stage1_item[1]),
 						              stage1_item[2] - stage1_item[0],
 						              stage1_item[3] - stage1_item[1],
 						              fill = False, edgecolor = 'g',
 						              linewidth = 0.5, alpha = 1))
+					ax.text(
+						stage1_item[0], stage1_item[1] - 2,
+						str(score_item),
+						fontsize = 4,
+						family = 'serif',
+						bbox = dict(facecolor = 'g', alpha = 1, pad = 0, edgecolor = 'none'), color = 'white')
+				
+				length = len(dict_all[im_name]['stage1_out'])
+				for ind in range(length):
+					# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
+					stage1_item = dict_all[im_name]['stage1_out'][ind]
+					ax.add_patch(
+						plt.Rectangle((stage1_item[0], stage1_item[1]),
+						              stage1_item[2] - stage1_item[0],
+						              stage1_item[3] - stage1_item[1],
+						              fill = False, edgecolor = 'orange',
+						              linewidth = 0.1, alpha = 0.6))
 				
 				fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/{}.png".format(im_name), dpi = dpi)
 				plt.close('all')
 			
 			dict_all[im_name].pop('stage1_out')
 			dict_all[im_name].pop('stage2_out')
-			dict_all[im_name].pop('final_pred')
+			dict_all[im_name].pop('stage2_score')
+			dict_all[im_name].pop('score')
+			dict_all[im_name].pop('boxes')
 		#
 		# # Draw stage1 pred_boxes onto im and gt
 		# dpi = 200
@@ -471,7 +496,6 @@ def test_net(
 			with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/{}.json".format(method), 'w') as f:
 				f.write(json.dumps(dict_all))
 				print("In {} round, saved dict_all ".format(i))
-				exit(0)
 		extend_results(i, all_boxes, cls_boxes_i)
 		if cls_segms_i is not None:
 			extend_results(i, all_segms, cls_segms_i)
