@@ -94,23 +94,43 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 	timers['misc_bbox'].tic()
 	
 	if cfg.FAST_RCNN.FAST_HEAD2_DEBUG:
-		with open(os.path.join(path, "stage1_pred_iou.json"), "r") as f:
-			stage1_pred_iou = np.array(json.load(f), dtype = "float32")
+		if cfg.FAST_RCNN.IOU_NMS:
+			with open(os.path.join(path, "iou_stage1_pred_iou.json"), "r") as f:
+				stage1_pred_iou = np.array(json.load(f), dtype = "float32")
+			
+			with open(os.path.join(path, "iou_stage1_pred_boxes.json"), "r") as f:
+				stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
+			
+			with open(os.path.join(path, "iou_stage2_pred_boxes.json"), "r") as f:
+				stage2_pred_boxes = np.array(json.load(f), dtype = "float32")
+			
+			with open(os.path.join(path, 'iou_dets_cls.json', 'r')) as f:
+				dets_cls = json.load(f)
+			
+			with open(os.path.join(path, "iou_stage1_score.json"), "r") as f:
+				stage1_score = json.load(f)
+			
+			with open(os.path.join(path, "iou_stage2_score.json"), "r") as f:
+				stage2_score = json.load(f)
 		
-		with open(os.path.join(path, "stage1_pred_boxes.json"), "r") as f:
-			stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
-		
-		with open(os.path.join(path, "stage2_pred_boxes.json"), "r") as f:
-			stage2_pred_boxes = np.array(json.load(f), dtype = "float32")
-		
-		with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'r') as f:
-			dets_cls = json.load(f)
-		
-		with open(os.path.join(path, "stage1_score.json"), "r") as f:
-			stage1_score = json.load(f)
-		
-		with open(os.path.join(path, "stage2_score.json"), "r") as f:
-			stage2_score = json.load(f)
+		elif cfg.FAST_RCNN.SCORE_NMS:
+			with open(os.path.join(path, "score_stage1_pred_iou.json"), "r") as f:
+				stage1_pred_iou = np.array(json.load(f), dtype = "float32")
+			
+			with open(os.path.join(path, "score_stage1_pred_boxes.json"), "r") as f:
+				stage1_pred_boxes = np.array(json.load(f), dtype = "float32")
+			
+			with open(os.path.join(path, "score_stage2_pred_boxes.json"), "r") as f:
+				stage2_pred_boxes = np.array(json.load(f), dtype = "float32")
+			
+			with open(os.path.join(path, 'score_dets_cls.json'), 'r') as f:
+				dets_cls = json.load(f)
+			
+			with open(os.path.join(path, "score_stage1_score.json"), "r") as f:
+				stage1_score = json.load(f)
+			
+			with open(os.path.join(path, "score_stage2_score.json"), "r") as f:
+				stage2_score = json.load(f)
 		
 		dict_i['stage1_out'] = stage1_pred_boxes
 		dict_i['shift_iou'] = stage1_pred_iou

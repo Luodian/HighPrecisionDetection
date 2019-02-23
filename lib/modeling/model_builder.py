@@ -447,26 +447,51 @@ class Generalized_RCNN(nn.Module):
 					
 					# stage1_pred is another name of stage2_rois
 					assert len(stage1_pred_iou) == len(stage2_rois)
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_score.json", "w") as f:
-						json.dump(stage2_rois_score.tolist(), f)
-					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage2_score.json", "w") as f:
-						json.dump(stage2_final_score.tolist(), f)
-					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_boxes.json", 'w') as f:
-						json.dump(stage2_rois.tolist(), f)
-					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage1_pred_iou.json", 'w') as f:
-						json.dump(stage1_pred_iou, f)
-					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/stage2_pred_boxes.json", 'w') as f:
-						json.dump(stage2_final_boxes.tolist(), f)
-					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/dets_cls.json", 'w') as f:
-						json.dump(dets_cls, f)
-					
-					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/cls_tracker.json", 'w') as f:
-						json.dump(cls_tracker, f)
+					if cfg.FAST_RCNN.IOU_NMS:
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_stage1_score.json", "w") as f:
+							json.dump(stage2_rois_score.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_stage2_score.json", "w") as f:
+							json.dump(stage2_final_score.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_stage1_pred_boxes.json", 'w') as f:
+							json.dump(stage2_rois.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_stage1_pred_iou.json", 'w') as f:
+							json.dump(stage1_pred_iou, f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_stage2_pred_boxes.json", 'w') as f:
+							json.dump(stage2_final_boxes.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_dets_cls.json", 'w') as f:
+							json.dump(dets_cls, f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/iou_cls_tracker.json", 'w') as f:
+							json.dump(cls_tracker, f)
+							
+					elif cfg.FAST_RCNN.SCORE_NMS:
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_stage1_score.json", "w") as f:
+							json.dump(stage2_rois_score.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_stage2_score.json", "w") as f:
+							json.dump(stage2_final_score.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_stage1_pred_boxes.json",
+						          'w') as f:
+							json.dump(stage2_rois.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_stage1_pred_iou.json", 'w') as f:
+							json.dump(stage1_pred_iou, f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_stage2_pred_boxes.json",
+						          'w') as f:
+							json.dump(stage2_final_boxes.tolist(), f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_dets_cls.json", 'w') as f:
+							json.dump(dets_cls, f)
+						
+						with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/score_cls_tracker.json", 'w') as f:
+							json.dump(cls_tracker, f)
 				
 				else:
 					im_scale = im_info.data.cpu().numpy().squeeze()[2]

@@ -96,6 +96,7 @@ def distribute(rois, label_blobs):
 	"""
 	lvl_min = cfg.FPN.ROI_MIN_LEVEL
 	lvl_max = cfg.FPN.ROI_MAX_LEVEL
+	
 	lvls = fpn_utils.map_rois_to_fpn_levels(rois[:, 1:5], lvl_min, lvl_max)
 	
 	# Delete roi entries that have negative area

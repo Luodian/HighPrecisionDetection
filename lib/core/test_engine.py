@@ -297,8 +297,12 @@ def test_net(
 			
 			if cfg.FAST_RCNN.FAST_HEAD2_DEBUG_VIS and i < 100:
 				
-				with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/cls_tracker.json", 'r') as f:
-					cls_tracker = json.load(f)
+				if cfg.FAST_RCNN.IOU_NMS:
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/cls_tracker.json", 'r') as f:
+						cls_tracker = json.load(f)
+				elif cfg.FAST_RCNN.SCORE_NMS:
+					with open("/nfs/project/libo_i/IOU.pytorch/IOU_Validation/cls_tracker.json", 'r') as f:
+						cls_tracker = json.load(f)
 				
 				# Draw stage1 pred_boxes onto im and gt
 				dpi = 200
@@ -356,42 +360,7 @@ def test_net(
 			dict_all[im_name].pop('stage2_score')
 			dict_all[im_name].pop('score')
 			dict_all[im_name].pop('boxes')
-		#
-		# # Draw stage1 pred_boxes onto im and gt
-		# dpi = 200
-		# fig = plt.figure(frameon = False)
-		# fig.set_size_inches(im.shape[1] / dpi, im.shape[0] / dpi)
-		# ax = plt.Axes(fig, [0., 0., 1., 1.])
-		# ax.axis('off')
-		# fig.add_axes(ax)
-		# ax.imshow(im[:, :, ::-1])
-		# # 在im上添加gt
-		# for item in gt_i:
-		# 	ax.add_patch(
-		# 		plt.Rectangle((item[0], item[1]),
-		# 		              item[2] - item[0],
-		# 		              item[3] - item[1],
-		# 		              fill = False, edgecolor = 'r',
-		# 		              linewidth = 0.1, alpha = 1))
-		#
-		# # 在im上添加proposals
-		# cnt = 0
-		# length = len(dict_all[im_name]['after_nms_stage1_pred_boxes'])
-		# for ind in range(length):
-		# 	# stage1_item = dict_all[im_name]['stage1_pred_boxes'][ind]
-		# 	stage1_item = dict_all[im_name]['after_nms_stage1_pred_boxes'][ind]
-		# 	cnt += 1
-		# 	ax.add_patch(
-		# 		plt.Rectangle((stage1_item[0], stage1_item[1]),
-		# 		              stage1_item[2] - stage1_item[0],
-		# 		              stage1_item[3] - stage1_item[1],
-		# 		              fill = False, edgecolor = 'g',
-		# 		              linewidth = 0.6, alpha = 1))
-		#
-		# print("Here is {} proposals above 0.8 in im {}".format(cnt, im_name))
-		# fig.savefig("/nfs/project/libo_i/IOU.pytorch/2stage_iminfo/after_nms_{}.png".format(im_name),
-		#             dpi = dpi)
-		# plt.close('all')
+		
 		if cfg.TEST.IOU_OUT:
 			gt_i = cached_roidb[i]['boxes']
 			
@@ -526,7 +495,7 @@ def test_net(
 				)
 			)
 		
-		if cfg.VIS:
+		if cfg.VIS and i < 100:
 			im_name = os.path.splitext(os.path.basename(entry['image']))[0]
 			vis_utils.vis_one_image(
 				im[:, :, ::-1],
