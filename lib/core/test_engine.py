@@ -495,7 +495,7 @@ def test_net(
 				)
 			)
 		
-		if cfg.VIS and i < 100:
+		if cfg.VIS:
 			im_name = os.path.splitext(os.path.basename(entry['image']))[0]
 			vis_utils.vis_one_image(
 				im[:, :, ::-1],

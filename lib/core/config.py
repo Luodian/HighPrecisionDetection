@@ -618,14 +618,6 @@ __C.FAST_RCNN.SCORE_NMS = False
 __C.FAST_RCNN.STAGE1_TURBULENCE = False
 __C.FAST_RCNN.STAGE1_TURBULENCE = False
 
-__C.FAST_RCNN.FPN_DISTRIBUTE = False
-
-__C.FAST_RCNN.RANDOM_DISTRIBUTE = False
-__C.FAST_RCNN.TWO_DISTRIBUTE = False
-__C.FAST_RCNN.THREE_DISTRIBUTE = False
-__C.FAST_RCNN.FOUR_DISTRIBUTE = False
-__C.FAST_RCNN.FIVE_DISTRIBUTE = False
-
 # The type of RoI head to use for bounding box classification and regression
 # The string must match a function this is imported in modeling.model_builder
 # (e.g., 'head_builder.add_roi_2mlp_head' to specify a two hidden layer MLP)

@@ -12,42 +12,19 @@ def map_rois_to_fpn_levels(rois, k_min, k_max):
 	"""Determine which FPN level each RoI in a set of RoIs should map to based
 	on the heuristic in the FPN paper.
 	"""
-	# 增加随机分配fpn的机制
-	if cfg.FAST_RCNN.FPN_DISTRIBUTE:
-		length = rois.shape[0]
-		lvls = []
-		import random
-		for i in range(length):
-			lvl = k_min
-			if cfg.FAST_RCNN.RANDOM_DISTRIBUTE:
-				lvl = random.randint(k_min, k_max)
-			if cfg.FAST_RCNN.TWO_DISTRIBUTE:
-				lvl = k_min
-			if cfg.FAST_RCNN.THREE_DISTRIBUTE:
-				lvl = k_min+1
-			if cfg.FAST_RCNN.FOUR_DISTRIBUTE:
-				lvl = k_min+2
-			if cfg.FAST_RCNN.FIVE_DISTRIBUTE:
-				lvl = k_min+3
-				
-			lvls.append(lvl)
-			
-		lvls = np.array(lvls, dtype = np.float32)
-		return lvls
-	else:
-		# Compute level ids
-		areas, neg_idx = box_utils.boxes_area(rois)
-		areas[neg_idx] = 0  # np.sqrt will remove the entries with negative value
-		s = np.sqrt(areas)
-		s0 = cfg.FPN.ROI_CANONICAL_SCALE  # default: 224
-		lvl0 = cfg.FPN.ROI_CANONICAL_LEVEL  # default: 4
-		
-		# Eqn.(1) in FPN paper
-		target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-6))
-		target_lvls = np.clip(target_lvls, k_min, k_max)
-		# Mark to discard negative area roi. See utils.fpn.add_multilevel_roi_blobs
-		# target_lvls[neg_idx] = -1
-		return target_lvls
+	# Compute level ids
+	areas, neg_idx = box_utils.boxes_area(rois)
+	areas[neg_idx] = 0  # np.sqrt will remove the entries with negative value
+	s = np.sqrt(areas)
+	s0 = cfg.FPN.ROI_CANONICAL_SCALE  # default: 224
+	lvl0 = cfg.FPN.ROI_CANONICAL_LEVEL  # default: 4
+	
+	# Eqn.(1) in FPN paper
+	target_lvls = np.floor(lvl0 + np.log2(s / s0 + 1e-6))
+	target_lvls = np.clip(target_lvls, k_min, k_max)
+	# Mark to discard negative area roi. See utils.fpn.add_multilevel_roi_blobs
+	# target_lvls[neg_idx] = -1
+	return target_lvls
 
 
 def add_multilevel_roi_blobs(

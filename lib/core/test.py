@@ -104,7 +104,7 @@ def im_detect_all(model, im, box_proposals = None, timers = None, im_name_tag = 
 			with open(os.path.join(path, "iou_stage2_pred_boxes.json"), "r") as f:
 				stage2_pred_boxes = np.array(json.load(f), dtype = "float32")
 			
-			with open(os.path.join(path, 'iou_dets_cls.json', 'r')) as f:
+			with open(os.path.join(path, 'iou_dets_cls.json'), 'r') as f:
 				dets_cls = json.load(f)
 			
 			with open(os.path.join(path, "iou_stage1_score.json"), "r") as f:
